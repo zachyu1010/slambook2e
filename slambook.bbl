@@ -1,0 +1,416 @@
+\begin{thebibliography}{10}
+
+\bibitem{Liu2016}
+L.~Haomin, Z.~Guofeng, and B.~Hujun, ``A survey of monocular simultaneous
+  localization and mapping,'' {\em Journal of Computer-Aided Design and Compute
+  Graphics}, vol.~28, no.~6, pp.~855--868, 2016.
+\newblock in Chinese.
+
+\bibitem{Davison2007}
+A.~Davison, I.~Reid, N.~Molton, and O.~Stasse, ``Monoslam: Real-time single
+  camera {SLAM},'' {\em IEEE Transactions on Pattern Analysis and Machine
+  Intelligence}, vol.~29, no.~6, pp.~1052--1067, 2007.
+
+\bibitem{Hartley2003}
+R.~Hartley and A.~Zisserman, {\em Multiple View Geometry in Computer Vision}.
+\newblock Cambridge university press, 2003.
+
+\bibitem{Smith1986}
+R.~C. Smith and P.~Cheeseman, ``On the representation and estimation of spatial
+  uncertainty,'' {\em International Journal of Robotics Research}, vol.~5,
+  no.~4, pp.~56--68, 1986.
+
+\bibitem{Thrun2005}
+S.~Thrun, W.~Burgard, and D.~Fox, {\em Probabilistic robotics}.
+\newblock MIT Press, 2005.
+
+\bibitem{Barfoot2016}
+T.~Barfoot, ``State estimation for robotics: A matrix lie group approach,''
+  2016.
+
+\bibitem{Pretto2011}
+A.~Pretto, E.~Menegatti, and E.~Pagello, ``Omnidirectional dense large-scale
+  mapping and navigation based on meaningful triangulation,'' {\em 2011 IEEE
+  International Conference on Robotics and Automation (ICRA 2011)},
+  pp.~3289--96, 2011.
+
+\bibitem{Rueckauer2016}
+B.~Rueckauer and T.~Delbruck, ``Evaluation of event-based algorithms for
+  optical flow with ground-truth from inertial measurement sensor,'' {\em
+  Frontiers in neuroscience}, vol.~10, 2016.
+
+\bibitem{Cadena2016}
+C.~Cesar, L.~Carlone, H.~C., Y.~Latif, D.~Scaramuzza, J.~Neira, I.~D. Reid, and
+  L.~John~J., ``Past, present, and future of simultaneous localization and
+  mapping: Towards the robust-perception age,'' {\em arXiv preprint
+  arXiv:1606.05830}, 2016.
+
+\bibitem{Newman2005}
+P.~Newman and K.~Ho, ``Slam-loop closing with visually salient features,'' in
+  {\em proceedings of the 2005 IEEE International Conference on Robotics and
+  Automation}, pp.~635--642, IEEE, 2005.
+
+\bibitem{Smith1990}
+R.~Smith, M.~Self, and P.~Cheeseman, ``Estimating uncertain spatial
+  relationships in robotics,'' in {\em Autonomous robot vehicles},
+  pp.~167--193, Springer, 1990.
+
+\bibitem{Beeson2010}
+P.~Beeson, J.~Modayil, and B.~Kuipers, ``Factoring the mapping problem: Mobile
+  robot map-building in the hybrid spatial semantic hierarchy,'' {\em
+  International Journal of Robotics Research}, vol.~29, no.~4, pp.~428--459,
+  2010.
+
+\bibitem{Strasdat2012}
+H.~Strasdat, J.~M. Montiel, and A.~J. Davison, ``Visual slam: Why filter?,''
+  {\em Image and Vision Computing}, vol.~30, no.~2, pp.~65--77, 2012.
+
+\bibitem{Liang2013}
+M.~Liang, H.~Min, and R.~Luo, ``Graph-based slam: A survey,'' {\em ROBOT},
+  vol.~35, no.~4, pp.~500--512, 2013.
+\newblock in Chinese.
+
+\bibitem{Fuentes-Pacheco2015}
+J.~Fuentes-Pacheco, J.~Ruiz-Ascencio, and J.~M. Rend{\'o}n-Mancha, ``Visual
+  simultaneous localization and mapping: a survey,'' {\em Artificial
+  Intelligence Review}, vol.~43, no.~1, pp.~55--81, 2015.
+
+\bibitem{Boal2014}
+J.~Boal, {\'{A}}.~S{\'{a}}nchez-Miralles, and {\'{A}}.~Arranz, ``Topological
+  simultaneous localization and mapping: a survey,'' {\em Robotica}, vol.~32,
+  pp.~803--821, 2014.
+
+\bibitem{Chen2012}
+S.~Y. Chen, ``Kalman filter for robot vision: A survey,'' {\em IEEE
+  Transactions on Industrial Electronics}, vol.~59, no.~11, pp.~4409--4420,
+  2012.
+
+\bibitem{Chen2007}
+Z.~Chen, J.~Samarabandu, and R.~Rodrigo, ``Recent advances in simultaneous
+  localization and map-building using computer vision,'' {\em Advanced
+  Robotics}, vol.~21, no.~3-4, pp.~233--265, 2007.
+
+\bibitem{Stuelpnagel1964}
+J.~Stuelpnagel, ``On the parametrization of the three-dimensional rotation
+  group,'' {\em SIAM Review}, vol.~6, no.~4, pp.~422--430, 1964.
+
+\bibitem{Barfoot2011}
+T.~Barfoot, J.~R. Forbes, and P.~T. Furgale, ``Pose estimation using linearized
+  rotations and quaternion algebra,'' {\em Acta Astronautica}, vol.~68,
+  no.~1-2, pp.~101--112, 2011.
+
+\bibitem{Varadarajan2013}
+V.~S. Varadarajan, {\em Lie groups, Lie algebras, and their representations},
+  vol.~102.
+\newblock Springer Science \& Business Media, 2013.
+
+\bibitem{Ma2012}
+Y.~Ma, S.~Soatto, J.~Kosecka, and S.~S. Sastry, {\em An invitation to 3-d
+  vision: from images to geometric models}, vol.~26.
+\newblock Springer Science \& Business Media, 2012.
+
+\bibitem{Sturm2012}
+J.~Sturm, N.~Engelhard, F.~Endres, W.~Burgard, and D.~Cremers, ``A benchmark
+  for the evaluation of rgb-d {SLAM} systems,'' in {\em 2012 IEEE/RSJ
+  International Conference on Intelligent Robots and Systems (IROS)},
+  pp.~573--580, IEEE, 2012.
+
+\bibitem{Strasdat2012a}
+H.~Strasdat, {\em Local accuracy and global consistency for efficient visual
+  slam}.
+\newblock PhD thesis, Citeseer, 2012.
+
+\bibitem{Zhang1999}
+Z.~Zhang, ``Flexible camera calibration by viewing a plane from unknown
+  orientations,'' in {\em Computer Vision, 1999. The Proceedings of the Seventh
+  IEEE International Conference on}, vol.~1, pp.~666--673, Ieee, 1999.
+
+\bibitem{Agarwal2009}
+S.~Agarwal, N.~Snavely, I.~Simon, S.~M. Seitz, and R.~Szeliski, ``Building rome
+  in a day,'' in {\em 2009 IEEE 12th international conference on computer
+  vision}, pp.~72--79, IEEE, 2009.
+
+\bibitem{Wolfe1969}
+P.~Wolfe, ``Convergence conditions for ascent methods,'' {\em SIAM review},
+  vol.~11, no.~2, pp.~226--235, 1969.
+
+\bibitem{Nocedal2006}
+J.~Nocedal and S.~Wright, {\em Numerical Optimization}.
+\newblock Springer Science \& Business Media, 2006.
+
+\bibitem{Lourakis2009}
+M.~I. Lourakis and A.~A. Argyros, ``Sba: A software package for generic sparse
+  bundle adjustment,'' {\em ACM Transactions on Mathematical Software (TOMS)},
+  vol.~36, no.~1, p.~2, 2009.
+
+\bibitem{Sibley2009a}
+G.~Sibley, ``Relative bundle adjustment,'' {\em Department of Engineering
+  Science, Oxford University, Tech. Rep}, vol.~2307, no.~09, 2009.
+
+\bibitem{Triggs2000}
+B.~Triggs, P.~F. McLauchlan, R.~I. Hartley, and A.~W. Fitzgibbon, ``Bundle
+  adjustment: a modern synthesis,'' in {\em Vision algorithms: theory and
+  practice}, pp.~298--372, Springer, 2000.
+
+\bibitem{Ceres}
+S.~Agarwal, K.~Mierle, and Others, ``Ceres solver.''
+  \url{http://ceres-solver.org}.
+
+\bibitem{Kummerle2011}
+R.~Kummerle, G.~Grisetti, H.~Strasdat, K.~Konolige, and W.~Burgard, ``G2o: a
+  general framework for graph optimization,'' in {\em IEEE International
+  Conference on Robotics and Automation (ICRA)}, pp.~3607--3613, IEEE, 2011.
+
+\bibitem{Davison2003}
+A.~J. Davison, ``Real-time simultaneous localisation and mapping with a single
+  camera,'' in {\em Computer Vision, 2003. Proceedings. Ninth IEEE
+  International Conference on}, pp.~1403--1410, IEEE, 2003.
+
+\bibitem{Klein2007}
+G.~Klein and D.~Murray, ``Parallel tracking and mapping for small ar
+  workspaces,'' in {\em Mixed and Augmented Reality, 2007. ISMAR 2007. 6th IEEE
+  and ACM International Symposium on}, pp.~225--234, IEEE, 2007.
+
+\bibitem{Mur-Artal2015}
+R.~Mur-Artal, J.~Montiel, and J.~D. Tardos, ``Orb-slam: a versatile and
+  accurate monocular slam system,'' {\em arXiv preprint arXiv:1502.00956},
+  2015.
+
+\bibitem{Engel2013}
+J.~Engel, J.~Sturm, and D.~Cremers, ``Semi-dense visual odometry for a
+  monocular camera,'' in {\em Proceedings of the IEEE International Conference
+  on Computer Vision}, pp.~1449--1456, 2013.
+
+\bibitem{Engel2014}
+J.~Engel, T.~Sch{\"o}ps, and D.~Cremers, ``Lsd-slam: Large-scale direct
+  monocular slam,'' in {\em Computer Vision--ECCV 2014}, pp.~834--849,
+  Springer, 2014.
+
+\bibitem{Kerl2013}
+C.~Kerl, J.~Sturm, and D.~Cremers, ``Robust odometry estimation for rgb-d
+  cameras,'' in {\em Robotics and Automation (ICRA), 2013 IEEE International
+  Conference on}, pp.~3748--3754, IEEE, 2013.
+
+\bibitem{Forster2014}
+C.~Forster, M.~Pizzoli, and D.~Scaramuzza, ``Svo: Fast semi-direct monocular
+  visual odometry,'' in {\em Robotics and Automation (ICRA), 2014 IEEE
+  International Conference on} (rs, ed.), pp.~15--22, IEEE, 2014.
+
+\bibitem{Labbe2014}
+M.~Labb{\'e} and F.~Michaud, ``Online global loop closure detection for
+  large-scale multi-session graph-based slam,'' in {\em 2014 IEEE/RSJ
+  International Conference on Intelligent Robots and Systems}, pp.~2661--2666,
+  IEEE, 2014.
+
+\bibitem{Kerl2013a}
+C.~Kerl, J.~Sturm, and D.~Cremers, ``Dense visual slam for rgb-d cameras,'' in
+  {\em 2013 IEEE/RSJ International Conference on Intelligent Robots and
+  Systems}, pp.~2100--2106, IEEE, 2013.
+
+\bibitem{Endres2014}
+F.~Endres, J.~Hess, J.~Sturm, D.~Cremers, and W.~Burgard, ``3-d mapping with an
+  rgb-d camera,'' {\em IEEE Transactions on Robotics}, vol.~30, no.~1,
+  pp.~177--187, 2014.
+
+\bibitem{Engel2016}
+J.~Engel, V.~Koltun, and D.~Cremers, ``Direct sparse odometry,'' {\em arXiv
+  preprint arXiv:1607.02565}, 2016.
+
+\bibitem{Gui2015}
+J.~Gui, D.~Gu, S.~Wang, and H.~Hu, ``A review of visual inertial odometry from
+  filtering and optimisation perspectives,'' {\em Advanced Robotics},
+  vol.~{29}, pp.~{1289--1301}, {Oct 18} {2015}.
+
+\bibitem{Martinelli2014}
+A.~Martinelli, ``Closed-form solution of visual-inertial structure from
+  motion,'' {\em International Journal of Computer Vision}, vol.~106, no.~2,
+  pp.~138--152, 2014.
+
+\bibitem{Bloesch2015}
+M.~Bloesch, S.~Omari, M.~Hutter, and R.~Siegwart, ``Robust visual inertial
+  odometry using a direct ekf-based approach,'' in {\em Intelligent Robots and
+  Systems (IROS), 2015 IEEE/RSJ International Conference on}, pp.~298--304,
+  IEEE, 2015.
+
+\bibitem{Li2013}
+M.~Li and A.~I. Mourikis, ``High-precision, consistent ekf-based
+  visual-inertial odometry,'' {\em International Journal of Robotics Research},
+  vol.~{32}, pp.~{690--711}, {MAY} {2013}.
+
+\bibitem{Huang2014}
+G.~Huang, M.~Kaess, and J.~J. Leonard, ``Towards consistent visual-inertial
+  navigation,'' in {\em 2014 IEEE International Conference on Robotics and
+  Automation (icra)}, {IEEE International Conference on Robotics and Automation
+  ICRA}, pp.~{4926--4933}, {2014}.
+\newblock {IEEE International Conference on Robotics and Automation (ICRA),
+  Hong Kong, PEOPLES R CHINA, MAY 31-JUN 07, 2014}.
+
+\bibitem{Leutenegger2015}
+S.~Leutenegger, S.~Lynen, M.~Bosse, R.~Siegwart, and P.~Furgale,
+  ``Keyframe-based visual--inertial odometry using nonlinear optimization,''
+  {\em The International Journal of Robotics Research}, vol.~34, no.~3,
+  pp.~314--334, 2015.
+
+\bibitem{Forster2015}
+C.~Forster, L.~Carlone, F.~Dellaert, and D.~Scaramuzza, ``Imu preintegration on
+  manifold for efficient visual-inertial maximum-a-posteriori estimation,'' in
+  {\em Robotics: Science and Systems XI}, no.~EPFL-CONF-214687, 2015.
+
+\bibitem{Tkocz2015}
+M.~Tkocz and K.~Janschek, ``Towards consistent state and covariance
+  initialization for monocular slam filters,'' {\em Journal of Intelligent \&
+  Robotic Systems}, vol.~{80}, pp.~{475--489}, {DEC} {2015}.
+
+\bibitem{Usenko2016}
+V.~Usenko, J.~Engel, J.~Stueckler, and D.~Cremers, ``Direct visual-inertial
+  odometry with stereo cameras,'' in {\em IEEE International Conference on
+  Robotics and Automation (ICRA)}, May 2016.
+
+\bibitem{Nuechter2008}
+A.~N{\"u}chter and J.~Hertzberg, ``Towards semantic maps for mobile robots,''
+  {\em Robotics and Autonomous Systems}, vol.~56, no.~11, pp.~915--926, 2008.
+
+\bibitem{Civera2011}
+J.~Civera, D.~G{\'a}lvez-L{\'o}pez, L.~Riazuelo, J.~D. Tard{\'o}s, and
+  J.~Montiel, ``Towards semantic slam using a monocular camera,'' in {\em
+  Intelligent Robots and Systems (IROS), 2011 IEEE/RSJ International Conference
+  on}, pp.~1277--1284, IEEE, 2011.
+
+\bibitem{Koppula2011}
+H.~S. Koppula, A.~Anand, T.~Joachims, and A.~Saxena, ``Semantic labeling of 3d
+  point clouds for indoor scenes,'' in {\em Advances in Neural Information
+  Processing Systems}, pp.~244--252, 2011.
+
+\bibitem{Anand2012}
+A.~Anand, H.~S. Koppula, T.~Joachims, and A.~Saxena, ``Contextually guided
+  semantic labeling and search for three-dimensional point clouds,'' {\em The
+  International Journal of Robotics Research}, p.~0278364912461538, 2012.
+
+\bibitem{Fioraio2013}
+N.~Fioraio and L.~Di~Stefano, ``Joint detection, tracking and mapping by
+  semantic bundle adjustment,'' {\em 2013 IEEE Conference on Computer Vision
+  and Pattern Recognition (CVPR)}, pp.~1538--45, 2013.
+
+\bibitem{Salas-Moreno2014}
+R.~F. Salas-Moreno, B.~Glocken, P.~H. Kelly, and A.~J. Davison, ``Dense planar
+  slam,'' in {\em Mixed and Augmented Reality (ISMAR), 2014 IEEE International
+  Symposium on}, pp.~157--164, IEEE, 2014.
+
+\bibitem{Salas-Moreno2013}
+R.~F. Salas-Moreno, R.~A. Newcombe, H.~Strasdat, P.~H.~J. Kelly, and A.~J.
+  Davison, ``Slam++: Simultaneous localisation and mapping at the level of
+  objects,'' {\em 2013 IEEE Conference on Computer Vision and Pattern
+  Recognition (CVPR)}, pp.~1352--9, 2013.
+
+\bibitem{Stueckler2012}
+J.~St{\"u}ckler, N.~Biresev, and S.~Behnke, ``Semantic mapping using
+  object-class segmentation of rgb-d images,'' in {\em 2012 IEEE/RSJ
+  International Conference on Intelligent Robots and Systems}, pp.~3005--3010,
+  IEEE, 2012.
+
+\bibitem{Kostavelis2013}
+I.~Kostavelis and A.~Gasteratos, ``Learning spatially semantic representations
+  for cognitive robot navigation,'' {\em Robotics and Autonomous Systems},
+  vol.~61, no.~12, pp.~1460--1475, 2013.
+
+\bibitem{Couprie2013}
+C.~Couprie, C.~Farabet, L.~Najman, and Y.~LeCun, ``Indoor semantic segmentation
+  using depth information,'' {\em arXiv preprint arXiv:1301.3572}, 2013.
+
+\bibitem{Deng2009}
+J.~Deng, W.~Dong, R.~Socher, L.-J. Li, K.~Li, and L.~Fei-Fei, ``Imagenet: A
+  large-scale hierarchical image database,'' in {\em CVPR09}, 2009.
+
+\bibitem{Krizhevsky2012}
+A.~Krizhevsky, I.~Sutskever, and G.~E. Hinton, ``Imagenet classification with
+  deep convolutional neural networks,'' in {\em Advances in neural information
+  processing systems}, pp.~1097--1105, 2012.
+
+\bibitem{He2015}
+K.~He, X.~Zhang, S.~Ren, and J.~Sun, ``Deep residual learning for image
+  recognition,'' {\em arXiv preprint arXiv:1512.03385}, 2015.
+
+\bibitem{Ren2015}
+S.~Ren, K.~He, R.~Girshick, and J.~Sun, ``Faster r-cnn: Towards real-time
+  object detection with region proposal networks,'' in {\em Advances in neural
+  information processing systems}, pp.~91--99, 2015.
+
+\bibitem{Long2014}
+J.~Long, E.~Shelhamer, and T.~Darrell, ``Fully convolutional networks for
+  semantic segmentation,'' {\em arXiv preprint arXiv:1411.4038}, 2014.
+
+\bibitem{Zheng2015}
+S.~Zheng, S.~Jayasumana, B.~Romera-Paredes, V.~Vineet, Z.~Su, D.~Du, C.~Huang,
+  and P.~Torr, ``Conditional random fields as recurrent neural networks,'' in
+  {\em International Conference on Computer Vision (ICCV)}, 2015.
+
+\bibitem{Gupta2014}
+S.~Gupta, P.~Arbel{\'a}ez, R.~Girshick, and J.~Malik, ``Indoor scene
+  understanding with rgb-d images: Bottom-up segmentation, object detection and
+  semantic segmentation,'' {\em International Journal of Computer Vision},
+  pp.~1--17, 2014.
+
+\bibitem{Konda2015}
+K.~Konda and R.~Memisevic, ``Learning visual odometry with a convolutional
+  network,'' in {\em International Conference on Computer Vision Theory and
+  Applications}, 2015.
+
+\bibitem{Kendall2015}
+A.~Kendall, M.~Grimes, and R.~Cipolla, ``Posenet: A convolutional network for
+  real-time 6-dof camera relocalization,'' in {\em Proceedings of the IEEE
+  International Conference on Computer Vision}, pp.~2938--2946, 2015.
+
+\bibitem{Hou2015}
+Y.~Hou, H.~Zhang, and S.~Zhou, ``Convolutional neural network-based image
+  representation for visual loop closure detection,'' {\em arXiv preprint
+  arXiv:1504.05241}, 2015.
+
+\bibitem{An2012}
+S.~Y. An, J.~G. Kang, L.~K. Lee, and S.~Y. Oh, ``Line segment-based indoor
+  mapping with salient line feature extraction,'' {\em Advanced Robotics},
+  vol.~26, no.~5-6, pp.~437--460, 2012.
+
+\bibitem{Zhou2015}
+H.~Zhou, D.~Zou, L.~Pei, R.~Ying, P.~Liu, and W.~Yu, ``Structslam: Visual slam
+  with building structure lines,'' {\em Vehicular Technology, IEEE Transactions
+  on}, vol.~64, pp.~1364--1375, April 2015.
+
+\bibitem{Benedettelli2012}
+D.~Benedettelli, A.~Garulli, and A.~Giannitrapani, ``Cooperative slam using
+  m-space representation of linear features,'' {\em Robotics and Autonomous
+  Systems}, vol.~60, no.~10, pp.~1267--1278, 2012.
+
+\bibitem{Saarinen2013}
+J.~P. Saarinen, H.~Andreasson, T.~Stoyanov, and A.~J. Lilienthal, ``3d normal
+  distributions transform occupancy maps: An efficient representation for
+  mapping in dynamic environments,'' {\em The International Journal of Robotics
+  Research}, vol.~32, no.~14, pp.~1627--1644, 2013.
+
+\bibitem{Maddern2012}
+W.~Maddern, M.~Milford, and G.~Wyeth, ``Cat-slam: probabilistic localisation
+  and mapping using a continuous appearance-based trajectory,'' {\em
+  International Journal of Robotics Research}, vol.~31, no.~4SI, pp.~429--451,
+  2012.
+
+\bibitem{Wang2008}
+H.~Wang, Z.-G. Hou, L.~Cheng, and M.~Tan, ``Online mapping with a mobile robot
+  in dynamic and unknown environments,'' {\em International Journal of
+  Modelling, Identification and Control}, vol.~4, no.~4, pp.~415--423, 2008.
+
+\bibitem{Zou2013}
+D.~Zou and P.~Tan, ``Coslam: Collaborative visual {SLAM} in dynamic
+  environments,'' {\em IEEE Transactions On Pattern Analysis And Machine
+  Intelligence}, vol.~35, no.~2, pp.~354--366, 2013.
+
+\bibitem{Gil2010a}
+A.~Gil, O.~Reinoso, M.~Ballesta, and M.~Julia, ``Multi-robot visual slam using
+  a rao-blackwellized particle filter,'' {\em Robotics and Autonomous Systems},
+  vol.~58, no.~1, pp.~68--80, 2010.
+
+\bibitem{Vidal-Calleja2011}
+T.~A. Vidal-Calleja, C.~Berger, J.~Sola, and S.~Lacroix, ``Large scale multiple
+  robot visual mapping with heterogeneous landmarks in semi-structured
+  terrain,'' {\em Robotics and Autonomous Systems}, vol.~59, no.~9,
+  pp.~654--674, 2011.
+
+\end{thebibliography}
