@@ -125,6 +125,21 @@ Z.~Zhang, ``Flexible camera calibration by viewing a plane from unknown
   orientations,'' in {\em Computer Vision, 1999. The Proceedings of the Seventh
   IEEE International Conference on}, vol.~1, pp.~666--673, Ieee, 1999.
 
+\bibitem{Hirschmuller2008}
+H.~Hirschmuller, ``Stereo processing by semiglobal matching and mutual
+  information,'' {\em IEEE Transactions on pattern analysis and machine
+  intelligence}, vol.~30, no.~2, pp.~328--341, 2008.
+
+\bibitem{Scharstein2002}
+D.~Scharstein and R.~Szeliski, ``A taxonomy and evaluation of dense two-frame
+  stereo correspondence algorithms,'' {\em International journal of computer
+  vision}, vol.~47, no.~1-3, pp.~7--42, 2002.
+
+\bibitem{Seitz2006}
+S.~M. Seitz, B.~Curless, J.~Diebel, D.~Scharstein, and R.~Szeliski, ``A
+  comparison and evaluation of multi-view stereo reconstruction algorithms,''
+  in {\em null}, pp.~519--528, IEEE, 2006.
+
 \bibitem{Agarwal2009}
 S.~Agarwal, N.~Snavely, I.~Simon, S.~M. Seitz, and R.~Szeliski, ``Building rome
   in a day,'' in {\em 2009 IEEE 12th international conference on computer

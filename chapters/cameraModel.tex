@@ -101,7 +101,7 @@ v=f_y\frac{Y}{Z} + c_y
 Z \begin{pmatrix} u\\ v\\ 1 \end{pmatrix}= \begin{pmatrix} f_x & 0&c_x \\ 0& f_y& c_y\\ 0&0 & 1 \end{pmatrix}\begin{pmatrix} X\\ Y\\ Z \end{pmatrix} 
 \buildrel \Delta \over = \bm{K} \bm{P}.
 \end{equation}
-该式中，我们把中间的量组成的矩阵称为相机的\textbf{内参数矩阵}（Camera Intrinsics）$\bm{K}$。通常认为，相机的内参在出厂之后是固定的，不会在使用过程中发生变化。有的相机生产厂商会告诉你相机的内参，而有时需要你自己确定相机的内参，也就是所谓的\textbf{标定}。鉴于标定算法业已成熟（如著名的单目棋盘格张正友标定法\cite{Zhang1999}），这里就不介绍了。
+该式中，我们把中间的量组成的矩阵称为相机的\textbf{内参数矩阵}（Camera Intrinsics）$\bm{K}$。通常认为，相机的内参在出厂之后是固定的，不会在使用过程中发生变化。有的相机生产厂商会告诉你相机的内参，而有时需要你自己确定相机的内参，也就是所谓的\textbf{标定}。鉴于标定算法业已成熟（如著名的单目棋盘格张正友标定法\textsuperscript{\cite{Zhang1999}}），这里就不介绍了。
 
 有内参，自然也有相对的外参。考虑到在式~\eqref{eq:intrinmatrix}~中我们使用的是$P$在相机坐标系下的坐标。由于相机在运动，所以$P$的相机坐标应该是它的世界坐标（记为$\bm{P}_w$）根据相机的当前位姿变换到相机坐标系下的结果。相机的位姿由它的旋转矩阵$\bm{R}$和平移向量$\bm{t}$来描述。那么有：
 
@@ -257,6 +257,8 @@ z = \frac{{fb}}{d}, \quad d \buildrel \Delta \over = {u_L} - {u_R}.
 在测量深度之后，RGB-D相机通常按照生产时的各相机摆放位置，自己完成深度与彩色图像素之间的配对，输出一一对应的彩色图和深度图。我们可以在同一个图像位置，读取到色彩信息和距离信息，计算像素的3D相机坐标，生成点云（Point Cloud）。对RGB-D数据，既可以在图像层面进行处理，亦可在点云层面处理。本讲的第二个实验将演示RGB-D相机的点云构建过程。
 
 RGB-D相机能够实时地测量每个像素点的距离。但是，由于这种发射−接收的测量方式，其使用范围比较受限。用红外光进行深度值测量的RGB-D相机，容易受到日光或其他传感器发射的红外光干扰，因此不能在室外使用。在没有调制的情况下，同时使用多个RGB-D相机时也会相互干扰。对于透射材质的物体，因为接收不到反射光，所以无法测量这些点的位置。此外，RGB-D相机在成本、功耗方面，都有一些劣势。
+
+% TODO 鱼眼相机模型
 
 \section{图像}
 相机加上镜头，把三维世界中的信息转换成了一张由像素组成的照片，随后存储在计算机中，作为后续处理的数据来源。在数学中，图像可以用一个矩阵来描述；而在计算机中，它们占据一段连续的磁盘或内存空间，可以用二维数组来表示。这样一来，程序就不必区别它们处理的是一个数值矩阵，还是有实际意义的图像了。
@@ -474,20 +476,71 @@ int main(int argc, char **argv) {
 	return 0;
 }
 \end{lstlisting}
-%\section{实践部分：相机标定}
-%坐等萌萌的标定。
 
 \section{实践：3D视觉}
 \subsection{双目视觉}
-我们已经介绍了双目视觉的成像原理。现在我们从双目的左右图像出发，计算图像对应的视差图，然后再计算各像素在相机坐标系下的坐标，它们将构成\textbf{点云}。
-%TODO 双目视觉
+我们已经介绍了双目视觉的成像原理。现在我们从双目的左右图像出发，计算图像对应的视差图，然后再计算各像素在相机坐标系下的坐标，它们将构成\textbf{点云}。在第五章代码目录的stereo文件夹中，我们准备了左右目的图像，如\autoref{fig:stereoExample}所示。下面的代码演示了计算视差图和点云部分：
+\begin{lstlisting}[language=C++,caption=slambook/ch5/stereoVision/stereoVision.cpp（部分）]
+int main(int argc, char **argv) {
+    // 内参
+    double fx = 718.856, fy = 718.856, cx = 607.1928, cy = 185.2157;
+    // 基线
+    double b = 0.573;
+    
+    // 读取图像
+    cv::Mat left = cv::imread(left_file, 0);
+    cv::Mat right = cv::imread(right_file, 0);
+    cv::Ptr<cv::StereoSGBM> sgbm = cv::StereoSGBM::create(
+        0, 96, 9, 8 * 9 * 9, 32 * 9 * 9, 1, 63, 10, 100, 32);    // 神奇的参数
+    cv::Mat disparity_sgbm, disparity;
+    sgbm->compute(left, right, disparity_sgbm);
+    disparity_sgbm.convertTo(disparity, CV_32F, 1.0 / 16.0f);
+    
+    // 生成点云
+    vector<Vector4d, Eigen::aligned_allocator<Vector4d>> pointcloud;
+    
+    // 如果你的机器慢，请把后面的v++和u++改成v+=2, u+=2
+    for (int v = 0; v < left.rows; v++)
+        for (int u = 0; u < left.cols; u++) {
+            if (disparity.at<float>(v, u) <= 10.0 || disparity.at<float>(v, u) >= 96.0) continue;
+            
+            Vector4d point(0, 0, 0, left.at<uchar>(v, u) / 255.0); // 前三维为xyz,第四维为颜色
+            
+            // 根据双目模型计算 point 的位置
+            double x = (u - cx) / fx;
+            double y = (v - cy) / fy;
+            double depth = fx * b / (disparity.at<float>(v, u));
+            point[0] = x * depth;
+            point[1] = y * depth;
+            point[2] = depth;
+            
+            pointcloud.push_back(point);
+    }
+    
+    cv::imshow("disparity", disparity / 96.0);
+    cv::waitKey(0);
+    // 画出点云
+    showPointCloud(pointcloud);
+    return 0;
+}
+\end{lstlisting}
+
+这个例子中我们调用了OpenCV实现的SGBM（Semi-global Batch Matching）\textsuperscript{\cite{Hirschmuller2008}}算法计算左右图像的视差，然后通过双目相机的几何模型把它变换到相机的3D空间中。SGBM使用了来自网络的经典参数配置，我们主要调整了最大和最小视差。视差数据结合相机的内参、基线，即能确定各点在三维空间中的位置。为了节省版面，我们省略了显示点云相关的代码。
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[width=0.9\textwidth]{cameraModel/stereoExample.pdf}
+    \caption{双目视觉的例子，左上：左眼图像，右上：右眼图像，中间：SGBM的视差图，下方：点云图。注意左侧相机看到了一部分右侧相机没有看到的内容，所以对应的视差是空的。}
+    \label{fig:stereoExample}
+\end{figure}
+
+本书不准备展开介绍双目相机的视差计算算法，感兴趣的读者可以阅读相关的参考文献\textsuperscript{\cite{Scharstein2002, Seitz2006}}。除了OpenCV实现的双目算法以外，还有许多其他的库专注于实现高效的视差计算。它是一个复杂又实用的课题。
 
 \subsection{RGB-D视觉}
-% TODO 把RGB-D代码切换到Pangolin，去掉PCL依赖
 \label{sec:join-point-cloud}
-最后，我们演示一个RGB-D视觉的例子。RGB-D相机的方便之处在于能通过物理方法获得像素深度信息，再配合上相机的内外参，我们可以计算任何一个像素在世界坐标系下的位置，从而建立一张点云地图。现在我们就来练习一下。
+最后，我们演示一个RGB-D视觉的例子。RGB-D相机的方便之处在于能通过物理方法获得像素深度信息。如果已知相机的内外参，我们可以计算任何一个像素在世界坐标系下的位置，从而建立一张点云地图。现在我们就来演示一下。
 
-我们准备了5对图像，位于slambook/ch5/joinMap中。在color/下有1.png到5.png共5张RGB图，而在depth/下有5张对应的深度图。同时，pose.txt文件给出了5张图像的相机位姿（以$\bm{T}_\mathrm{wc}$形式）。位姿记录的形式是平移向量加旋转四元数：
+我们准备了5对图像，位于slambook/ch5/rgbd文件夹中。在color/下有1.png到5.png共5张RGB图，而在depth/下有5张对应的深度图。同时，pose.txt文件给出了5张图像的相机外参位姿（以$\bm{T}_\mathrm{wc}$形式）。位姿记录的形式和之前一样，为平移向量加旋转四元数：
 \[
 [x,y,z,q_x,q_y,q_z, q_w],
 \]
@@ -498,50 +551,70 @@ int main(int argc, char **argv) {
 
 下面我们写一段程序，完成两件事：(1). 根据内参计算一对RGB-D图像对应的点云；(2). 根据各张图的相机位姿（也就是外参），把点云加起来，组成地图。
 
-一点说明：
-\begin{enumerate}
-	\item 14\textasciitilde37行，读取彩色和深度图像对及位姿信息，并把位姿从四元数与平移向量转换为变换矩阵。注意程序里使用了boost::format进行字符串的格式化。
-	\item 65\textasciitilde78行：计算位于$(u,v)$、深度为$d$的像素在相机坐标系下的位置，并根据外参把它们变换到世界坐标。我们知道，相机坐标$\bm{p}_c$到像素坐标$(u,v,d)$的关系为
-	\begin{equation}
-	d\left[ \begin{array}{l}
-	u\\
-	v\\
-	1
-	\end{array} \right] = \bm{K} \bm{p}_c.
-	\end{equation}
-	反推$\bm{p}_c$的形式亦非常简单。设$\bm{p}_c=[x,y,z]$，那么：
-	\begin{align*}
-	z &= d \\
-	x &= \frac{{u - {c_x}}}{{{f_x}}}z\\
-	y &= \frac{{v - {c_y}}}{{{f_y}}}z.
-	\end{align*}
-	
-	\item 为了编译此程序，我们需3个库：Eigen、OpenCV和PCL。因此主程序的CMakeLists.txt应该如下：
-\begin{lstlisting}
-# opencv 
-find_package( OpenCV REQUIRED )
-include_directories( ${OpenCV_INCLUDE_DIRS} )
-
-# eigen 
-include_directories( "/usr/include/eigen3/" )
-
-# pcl 
-find_package( PCL REQUIRED COMPONENT common io )
-include_directories( ${PCL_INCLUDE_DIRS} )
-add_definitions( ${PCL_DEFINITIONS} )
-
-add_executable( joinMap joinMap.cpp )
-target_link_libraries( joinMap ${OpenCV_LIBS} ${PCL_LIBRARIES} )
+\begin{lstlisting}[language=C++,caption=slambook/ch5/rgbd/jointMap.cpp（部分）]
+int main(int argc, char **argv) {
+    vector<cv::Mat> colorImgs, depthImgs;    // 彩色图和深度图
+    TrajectoryType poses;         // 相机位姿
+    
+    ifstream fin("./pose.txt");
+    if (!fin) {
+        cerr << "请在有pose.txt的目录下运行此程序" << endl;
+        return 1;
+    }
+    
+    for (int i = 0; i < 5; i++) {
+        boost::format fmt("./%s/%d.%s"); //图像文件格式
+        colorImgs.push_back(cv::imread((fmt % "color" % (i + 1) % "png").str()));
+        depthImgs.push_back(cv::imread((fmt % "depth" % (i + 1) % "pgm").str(), -1)); // 使用-1读取原始图像
+        
+        double data[7] = {0};
+        for (auto &d:data) fin >> d;
+        Sophus::SE3d pose(Eigen::Quaterniond(data[6], data[3], data[4], data[5]),
+        Eigen::Vector3d(data[0], data[1], data[2]));
+        poses.push_back(pose);
+    }
+    
+    // 计算点云并拼接
+    // 相机内参 
+    double cx = 325.5;
+    double cy = 253.5;
+    double fx = 518.0;
+    double fy = 519.0;
+    double depthScale = 1000.0;
+    vector<Vector6d, Eigen::aligned_allocator<Vector6d>> pointcloud;
+    pointcloud.reserve(1000000);
+    
+    for (int i = 0; i < 5; i++) {
+        cout << "转换图像中: " << i + 1 << endl;
+        cv::Mat color = colorImgs[i];
+        cv::Mat depth = depthImgs[i];
+        Sophus::SE3d T = poses[i];
+        for (int v = 0; v < color.rows; v++)
+            for (int u = 0; u < color.cols; u++) {
+                unsigned int d = depth.ptr<unsigned short>(v)[u]; // 深度值
+                if (d == 0) continue; // 为0表示没有测量到
+                Eigen::Vector3d point;
+                point[2] = double(d) / depthScale;
+                point[0] = (u - cx) * point[2] / fx;
+                point[1] = (v - cy) * point[2] / fy;
+                Eigen::Vector3d pointWorld = T * point;
+                
+                Vector6d p;
+                p.head<3>() = pointWorld;
+                p[5] = color.data[v * color.step + u * color.channels()];   // blue
+                p[4] = color.data[v * color.step + u * color.channels() + 1]; // green
+                p[3] = color.data[v * color.step + u * color.channels() + 2]; // red
+                pointcloud.push_back(p);
+            }
+    }
+    
+    cout << "点云共有" << pointcloud.size() << "个点." << endl;
+    showPointCloud(pointcloud);
+    return 0;
+}
 \end{lstlisting}
-\end{enumerate}
 
-最后，我们把生成的点云以PCD格式存储在map.pcd中。用PCL提供的可视化程序打开这个文件：
-
-\begin{lstlisting}[language=sh]
-pcl_viewer map.pcd
-\end{lstlisting}
-
-随后就可以看到拼合的点云地图了（见\autoref{fig:pointcloudmapping}）。你可以拖动鼠标查看。
+运行程序后即可在Pangolin窗口中看到拼合的点云地图了（见\autoref{fig:pointcloudmapping}）。你可以拖动鼠标查看。
 
 \begin{figure}[!htp]
 	\centering
@@ -550,7 +623,7 @@ pcl_viewer map.pcd
 	\label{fig:pointcloudmapping}
 \end{figure}
 
-在这个例程中，我们使用相机内参和外参来计算像素在世界坐标系中的位置，并把它们合并成一个点云。这是一个综合性的示例，请读者仔细体会并掌握其内容。
+通过这些例子，我们演示了计算机视觉中一些常见的单目、双目和深度相机算法。希望读者通过这些简单的例子，实际地体会相机内外参、畸变参数的含义。
 
 \section*{习题}
 \begin{enumerate}
