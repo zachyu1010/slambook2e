@@ -1,5 +1,6 @@
 % !Mode:: "TeX:UTF-8"
 \chapter{视觉里程计1}
+\thispagestyle{empty}
 
 \begin{mdframed}  
 	\textbf{主要目标}
@@ -12,7 +13,7 @@
 	\end{enumerate}
 \end{mdframed}
 
-本书前面介绍了运动方程和观测方程的具体形式，并讲解了以非线性优化为主的求解方法。从本讲开始，我们结束基础知识的铺垫而步入正题：按照第2讲的内容，分别介绍视觉里程计、优化后端、回环检测和地图构建4个模块。本讲和下一讲主要介绍作为视觉里程计的主要理论，然后在第9讲中进行一次实践。本讲关注基于特征点方式的视觉里程计算法。我们将介绍什么是特征点、如何提取和匹配特征点，以及如何根据配对的特征点估计相机运动。
+本书前面介绍了运动方程和观测方程的具体形式，并讲解了以非线性优化为主的求解方法。从本讲开始，我们结束基础知识的铺垫而步入正题：按照第2讲的顺序，分别介绍视觉里程计、优化后端、回环检测和地图构建4个模块。本讲和下一讲主要介绍两类视觉里程计里常用的方法：特征点法和光流法。本讲中，我们将介绍什么是特征点、如何提取和匹配特征点，以及如何根据配对的特征点估计相机运动。
 
 \newpage
 \includepdf{resources/other/ch7.pdf}
@@ -20,20 +21,20 @@
 \newpage
 
 \section{特征点法}
-回顾第2讲的内容，我们说过视觉SLAM主要分为视觉前端和优化后端。前端也称为视觉里程计（VO）。它根据相邻图像的信息估计出粗略的相机运动，给后端提供较好的初始值。VO的实现方法，按是否需要提取特征，分为特征点法的前端及不提特征的直接法前端。基于特征点法的前端，长久以来（直到现在）被认为是视觉里程计的主流方法。它运行稳定，对光照、动态物体不敏感，是目前比较成熟的解决方案。在本讲中，我们将从特征点法入手，学习如何提取、匹配图像特征点，然后估计两帧之间的相机运动和场景结构，从而实现一个基本的两帧间视觉里程计。
+在第二讲中，我们说，一个SLAM系统分为前端和后端，其中前端也称为视觉里程计（VO）。VO根据相邻图像的信息估计出粗略的相机运动，给后端提供较好的初始值。VO的算法主要分为两个大类：\textbf{特征点法}和\textbf{直接法}。基于特征点法的前端，长久以来（直到现在）被认为是视觉里程计的主流方法。它具有稳定，对光照、动态物体不敏感的优势，是目前比较成熟的解决方案。在本讲中，我们将从特征点法入手，学习如何提取、匹配图像特征点，然后估计两帧之间的相机运动和场景结构，从而实现一个两帧间视觉里程计。这类算法有时也称为两视图几何（Two-view geometry）。
 
 \subsection{特征点}
-VO的主要问题是如何根据图像来估计相机运动。然而，图像本身是一个由亮度和色彩组成的矩阵，如果直接从矩阵层面考虑运动估计，将会非常困难。所以，我们习惯于采用这样一种做法：首先，从图像中选取比较\textbf{有代表性}的\textbf{点}。这些点在相机视角发生少量变化后会保持不变，所以我们会在各个图像中找到相同的点。然后，在这些点的基础上，讨论相机位姿估计问题，以及这些点的定位问题。在经典SLAM模型中，把它们称为\textbf{路标}。而在视觉SLAM中，路标则是指图像特征（Feature）。
+VO的核心问题是\textbf{如何根据图像来估计相机运动}。然而，图像本身是一个由亮度和色彩组成的矩阵，如果直接从矩阵层面考虑运动估计，将会非常困难。所以，比较方便的做法是：首先，从图像中选取比较\textbf{有代表性}的\textbf{点}。这些点在相机视角发生少量变化后会保持不变，于是我们能在各个图像中找到相同的点。然后，在这些点的基础上，讨论相机位姿估计问题，以及这些点的定位问题。在经典SLAM模型中，我们称这些点为\textbf{路标}（Landmark）。而在视觉SLAM中，路标则是指图像特征（Feature）。
 
-根据维基百科的定义，图像特征是一组与计算任务相关的信息，计算任务取决于具体的应用\textsuperscript{\cite{wiki:featurecv}}。简而言之，\textbf{特征是图像信息的另一种数字表达形式}。一组好的特征对于在指定任务上的最终表现至关重要，所以多年来研究者们花费了大量的精力对特征进行研究。数字图像在计算机中以灰度值矩阵的方式存储，所以最简单的，单个图像像素也是一种“特征”。但是，在视觉里程计中，我们希望\textbf{特征点在相机运动之后保持稳定}，而灰度值受光照、形变、物体材质的影响严重，在不同图像间变化非常大，不够稳定。理想的情况是，当场景和相机视角发生少量改变时，还能从图像中判断哪些地方是同一个点，因此仅凭灰度值是不够的，我们需要对图像提取特征点。
+根据维基百科的定义，图像特征是一组与计算任务相关的信息，计算任务取决于具体的应用\textsuperscript{\cite{wiki:featurecv}}。简而言之，\textbf{特征是图像信息的另一种数字表达形式}。一组好的特征对于在指定任务上的最终表现至关重要，所以多年来研究者们花费了大量的精力对特征进行研究。数字图像在计算机中以灰度值矩阵的方式存储，所以最简单的，单个图像像素也是一种“特征”。但是，在视觉里程计中，我们希望\textbf{特征点在相机运动之后保持稳定}，而灰度值受光照、形变、物体材质的影响严重，在不同图像间变化非常大，不够稳定。理想的情况是，当场景和相机视角发生少量改变时，算法还能从图像中判断哪些地方是同一个点。所以，仅凭灰度值是不够的，我们需要对图像提取特征点。
 
-特征点是图像里一些\textbf{特别的地方}。以\autoref{fig:corner-feature}~为例。我们可以把图像中的角点、边缘和区块都当成图像中有代表性的地方。不过，我们更容易精确地指出，某两幅图像中出现了同一个角点；同一个边缘则稍微困难一些，因为沿着该边缘前进，图像局部是相似的；同一个区块则是最困难的。我们发现，图像中的角点、边缘相比于像素区块而言更加“特别”，在不同图像之间的辨识度更强。所以，一种直观的提取特征的方式就是在不同图像间辨认角点，确定它们的对应关系。在这种做法中，角点就是所谓的特征。
+特征点是图像里一些\textbf{特别的地方}。以\autoref{fig:corner-feature}~为例。我们可以把图像中的角点、边缘和区块都当成图像中有代表性的地方。不过，我们更容易精确地指出，某两幅图像中出现了同一个角点；同一个边缘则稍微困难一些，因为沿着该边缘前进，图像局部是相似的；同一个区块则是最困难的。我们发现，图像中的角点、边缘相比于像素区块而言更加“特别”，在不同图像之间的辨识度更强。所以，一种直观的提取特征的方式就是在不同图像间辨认角点，确定它们的对应关系。在这种做法中，角点就是所谓的特征。角点的提取算法有很多，例如Harris角点\textsuperscript{\cite{Harris1988}}、FAST角点\textsuperscript{\cite{Rosten2006}}、GFTT角点\textsuperscript{\cite{Shi1994}}，等等。它们大部分是2000年以前提出的算法。
 
 然而，在大多数应用中，单纯的角点依然不能满足我们的很多需求。例如，从远处看上去是角点的地方，当相机走近之后，可能就不显示为角点了。或者，当旋转相机时，角点的外观会发生变化，我们也就不容易辨认出那是同一个角点。为此，计算机视觉领域的研究者们在长年的研究中设计了许多更加稳定的局部图像特征，如著名的SIFT\textsuperscript{\cite{Lowe2004}}、SURF\textsuperscript{\cite{Bay2006}}、ORB\textsuperscript{\cite{Rublee2011}}，等等。相比于朴素的角点，这些人工设计的特征点能够拥有如下的性质：
 
 \begin{enumerate}
-\item \emph{可重复性}（Repeatability）：相同的“区域”可以在不同的图像中找到。
-\item \emph{可区别性}（Distinctiveness）：不同的“区域”有不同的表达。
+\item \emph{可重复性}（Repeatability）：相同的特征可以在不同的图像中找到。
+\item \emph{可区别性}（Distinctiveness）：不同的特征有不同的表达。
 \item \emph{高效率}（Efficiency）：同一图像中，特征点的数量应远小于像素的数量。
 \item \emph{本地性}（Locality）：特征仅与一小片图像区域相关。
 \end{enumerate}
@@ -45,20 +46,22 @@ VO的主要问题是如何根据图像来估计相机运动。然而，图像本
     \label{fig:corner-feature}
 \end{figure}
 
-特征点由\textbf{关键点}（Key-point）和\textbf{描述子}（Descriptor）两部分组成。比如，当谈论SIFT特征时，是指“提取SIFT关键点，并计算SIFT描述子”两件事情。关键点是指该特征点在图像里的位置，有些特征点还具有朝向、大小等信息。描述子通常是一个向量，按照某种人为设计的方式，描述了该关键点周围像素的信息。描述子是按照“\textbf{外观相似的特征应该有相似的描述子}”的原则设计的。因此，只要两个特征点的描述子在向量空间上的距离相近，就可以认为它们是同样的特征点。
+特征点由\textbf{关键点}（Key-point）和\textbf{描述子}（Descriptor）两部分组成。比如，当我们说“在一张图像中计算SIFT特征点”，是指“提取SIFT关键点，并计算SIFT描述子”两件事情。关键点是指该特征点在图像里的位置，有些特征点还具有朝向、大小等信息。描述子通常是一个向量，按照某种人为设计的方式，描述了该关键点周围像素的信息。描述子是按照“\textbf{外观相似的特征应该有相似的描述子}”的原则设计的。因此，只要两个特征点的描述子在向量空间上的距离相近，就可以认为它们是同样的特征点。
 
-历史上，研究者们提出过许多图像特征。它们有些很精确，在相机的运动和光照变化下仍具有相似的表达，但相应地需要较大的计算量。其中，SIFT（尺度不变特征变换，Scale-Invariant Feature Transform）当属最为经典的一种。它充分考虑了在图像变换过程中出现的光照、尺度、旋转等变化，但随之而来的是极大的计算量。由于整个SLAM过程中图像特征的提取与匹配仅仅是诸多环节中的一个，到目前（2016年）为止，普通PC的CPU还无法实时地计算SIFT特征，进行定位与建图。所以在SLAM中我们甚少使用这种“奢侈”的图像特征。
+历史上，研究者们提出过许多图像特征。它们有些很精确，在相机的运动和光照变化下仍具有相似的表达，但相应地需要较大的计算量。其中，SIFT（尺度不变特征变换，Scale-Invariant Feature Transform）当属最为经典的一种。它充分考虑了在图像变换过程中出现的光照、尺度、旋转等变化，但随之而来的是极大的计算量。由于整个SLAM过程中图像特征的提取与匹配仅仅是诸多环节中的一个，到目前（2016年）为止，普通PC的CPU还无法实时地计算SIFT特征，进行定位与建图\footnote{这里是指30Hz的实时速度。}。所以在SLAM中我们甚少使用这种“奢侈”的图像特征。
 
-另一些特征，则考虑适当降低精度和健壮性，以提升计算的速度。例如，FAST关键点属于计算特别快的一种特征点（注意这里“关键点”的表述，说明它没有描述子）。而ORB（Oriented FAST and Rotated BRIEF）特征则是目前看来非常具有代表性的实时图像特征。它改进了FAST检测子\textsuperscript{\cite{rosten2006machine}}不具有方向性的问题，并采用速度极快的二进制描述子BRIEF\textsuperscript{\cite{calonder2010brief}}，使整个图像特征提取的环节大大加速。根据作者在论文中所述测试，在同一幅图像中同时提取约1000个特征点的情况下，ORB约要花费15.3ms，SURF约花费217.3ms，SIFT约花费5228.7ms。由此可以看出，ORB在保持了特征子具有旋转、尺度不变性的同时，速度方面提升明显，对于实时性要求很高的SLAM来说是一个很好的选择。
+另一些特征，则考虑适当降低精度和鲁棒性，以提升计算的速度。例如，FAST关键点属于计算特别快的一种特征点（注意这里“关键点”的表述，说明它没有描述子），而ORB（Oriented FAST and Rotated BRIEF）特征则是目前看来非常具有代表性的实时图像特征。它改进了FAST检测子\textsuperscript{\cite{Rosten2006}}不具有方向性的问题，并采用速度极快的二进制描述子BRIEF\textsuperscript{\cite{calonder2010brief}}，使整个图像特征提取的环节大大加速。根据作者在论文中所述测试，在同一幅图像中同时提取约1000个特征点的情况下，ORB约要花费15.3ms，SURF约花费217.3ms，SIFT约花费5228.7ms。由此可以看出，ORB在保持了特征子具有旋转、尺度不变性的同时，速度方面提升明显，对于实时性要求很高的SLAM来说是一个很好的选择。
 
-大部分特征提取都具有较好的并行性，可以通过GPU等设备来加速计算。经过GPU加速后的SIFT，就可以满足实时计算要求。但是，引入GPU将带来整个SLAM成本的提升。由此带来的性能提升是否足以抵去付出的计算成本，需要系统的设计人员仔细考量。在目前的SLAM方案中，ORB是质量与性能之间较好的折中，因此，我们以ORB为代表介绍提取特征的整个过程。
+大部分特征提取都具有较好的并行性，可以通过GPU等设备来加速计算。经过GPU加速后的SIFT，就可以满足实时计算要求。但是，引入GPU将带来整个SLAM成本的提升。由此带来的性能提升是否足以抵去付出的计算成本，需要系统的设计人员仔细考量。
+
+显然，计算机视觉领域存在大量的特征点种类，我们不可能在书中一一介绍。在目前的SLAM方案中，ORB是质量与性能之间较好的折中，因此，我们以ORB为代表介绍提取特征的整个过程。如果读者对特征提取和匹配算法感兴趣，我们建议阅读这方面的相关书籍\cite{Nixon2012}。
 
 \subsection{ORB特征}
 
 ORB特征亦由\textbf{关键点}和\textbf{描述子}两部分组成。它的关键点称为“Oriented FAST”，是一种改进的FAST角点，关于什么是FAST角点我们将在下文介绍。它的描述子称为BRIEF（Binary Robust Independent Elementary Feature）。因此，提取ORB特征分为如下两个步骤：
 \begin{enumerate}
 \item FAST角点提取：找出图像中的“角点”。相较于原版的FAST，ORB中计算了特征点的主方向，为后续的BRIEF描述子增加了旋转不变特性。
-\item BRIEF描述子：对前一步提取出特征点的周围图像区域进行描述。
+\item BRIEF描述子：对前一步提取出特征点的周围图像区域进行描述。ORB对BRIEF进行了一些改进，主要是指在BRIEF中使用了先前计算的方向信息。
 \end{enumerate}
 
 下面分别介绍FAST和BRIEF。
@@ -79,15 +82,22 @@ FAST是一种角点，主要检测局部像素灰度变化明显的地方，以�
 \begin{figure}[!ht]
 	\centering
 	\includegraphics[width=0.9\linewidth]{vo1/fast-corner}
-	\caption{FAST特征点\textsuperscript{\cite{rosten2006machine}}。}
+	\caption{FAST特征点\textsuperscript{\cite{Rosten2006}}。}
 	\label{fig:fastcorner}
 \end{figure}
 
-FAST特征点的计算仅仅是比较像素间亮度的差异，速度非常快，但它也有一些问题。首先，FAST特征点数量很大且不确定，而我们往往希望对图像提取固定数量的特征。因此，在ORB中对原始的FAST算法进行了改进。我们可以指定最终要提取的角点数量$N$，对原始FAST角点分别计算Harris响应值，然后选取前$N$个具有最大响应值的角点作为最终的角点集合。
+FAST特征点的计算仅仅是比较像素间亮度的差异所所以速度非常快，但它也有重复性不强，分布不均匀的缺点。此外，FAST角点不具有方向信息。同时，由于它固定取半径为3的圆，存在尺度问题：远处看着像是角点的地方，接近后看可能就不是角点了。针对FAST角点不具有方向性和尺度的弱点，ORB添加了尺度和旋转的描述。尺度不变性由构建图像金字塔\footnote{金字塔是指对图像进行不同层次的降采样，以获得不同分辨率的图像。}，并在金字塔的每一层上检测角点来实现。而特征的旋转是由灰度质心法（Intensity Centroid）实现的。
 
-其次，FAST角点不具有方向信息。而且，由于它固定取半径为3的圆，存在尺度问题：远处看着像是角点的地方，接近后看可能就不是角点了。针对FAST角点不具有方向性和尺度的弱点，ORB添加了尺度和旋转的描述。尺度不变性由构建图像金字塔\footnote{金字塔是指对图像进行不同层次的降采样，以获得不同分辨率的图像。}，并在金字塔的每一层上检测角点来实现。而特征的旋转是由灰度质心法（Intensity Centroid）实现的。我们稍微介绍一下。
+金字塔时计算图视觉中常用的一种处理方法，示意图见\autoref{fig:pyramid}。金字塔底层是原始图像。每往上一层，就对图像进行一个固定倍率的缩放，这样我们就有了不同分辨率的图像。较小的图像可以看成是远处看过来的场景。在特征匹配算法中，我们可以匹配不同层上的图像，从而实现尺度不变性。例如，如果相机在后退，那么我们应该能够在上一个图像金字塔的上层和下一个图像的下层中找到匹配。
 
-所谓质心是指以图像块灰度值作为权重的中心。其具体操作步骤如下\textsuperscript{\cite{rosin1999measuring}}：
+\begin{figure}[!t]
+    \centering
+    \includegraphics[width=0.9\linewidth]{vo1/pyramid}\\
+    \caption{使用金字塔可以匹配不同缩放倍率下的图像。}
+    \label{fig:pyramid}
+\end{figure}
+
+在旋转方面，我们计算特征点附近的图像灰度质心。所谓质心是指以图像块灰度值作为权重的中心。其具体操作步骤如下\textsuperscript{\cite{Rosin1999}}：
 \begin{enumerate}
 \item 在一个小的图像块$B$中，定义图像块的矩为
 \[
@@ -102,12 +112,12 @@ C=(\frac{m_{10}}{m_{00}},\frac{m_{01}}{m_{00}}).
 \theta = \arctan(m_{01}/m_{10}).
 \]
 \end{enumerate}
-通过以上方法，FAST角点便具有了尺度与旋转的描述，从而大大提升了其在不同图像之间表述的健壮性。所以在ORB中，把这种改进后的FAST称为Oriented FAST。
+通过以上方法，FAST角点便具有了尺度与旋转的描述，从而大大提升了其在不同图像之间表述的鲁棒性。所以在ORB中，把这种改进后的FAST称为Oriented FAST。
 
 \subsubsection{BRIEF描述子}
 在提取Oriented FAST关键点后，我们对每个点计算其描述子。ORB使用改进的BRIEF特征描述。我们先来介绍一下BRIEF是什么。
 
-BRIEF是一种\textbf{二进制}描述子，其描述向量由许多个0和1组成，这里的0和1编码了关键点附近两个像素（比如$p$和$q$）的大小关系：如果$p$比$q$大，则取1，反之就取0。如果我们取了128个这样的$p,q$，最后就得到128维由0、1组成的向量。那么，$p$和$q$如何选取呢？在作者原始的论文中给出了若干种挑选方法，大体上都是按照某种概率分布，随机地挑选$p$和$q$的位置，读者可以阅读BRIEF论文或OpenCV源码以查看其具体实现\textsuperscript{\cite{calonder2010brief}}。BRIEF使用了随机选点的比较，速度非常快，而且由于使用了二进制表达，存储起来也十分方便，适用于实时的图像匹配。原始的BRIEF描述子不具有旋转不变性，因此在图像发生旋转时容易丢失。而ORB在FAST特征点提取阶段计算了关键点的方向，所以可以利用方向信息，计算了旋转之后的“Steer BRIEF”特征使ORB的描述子具有较好的旋转不变性。
+BRIEF是一种\textbf{二进制}描述子，其描述向量由许多个0和1组成，这里的0和1编码了关键点附近两个随机像素（比如$p$和$q$）的大小关系：如果$p$比$q$大，则取1，反之就取0。如果我们取了128个这样的$p,q$，最后就得到128维由0、1组成的向量\textsuperscript{\cite{calonder2010brief}}。BRIEF使用了随机选点的比较，速度非常快，而且由于使用了二进制表达，存储起来也十分方便，适用于实时的图像匹配。原始的BRIEF描述子不具有旋转不变性，因此在图像发生旋转时容易丢失。而ORB在FAST特征点提取阶段计算了关键点的方向，所以可以利用方向信息，计算了旋转之后的“Steer BRIEF”特征使ORB的描述子具有较好的旋转不变性。
 
 由于考虑到了旋转和缩放，使得ORB在平移、旋转和缩放的变换下仍有良好的表现。同时，FAST和BREIF的组合也非常高效，使得ORB特征在实时SLAM中非常受欢迎。我们在\autoref{fig:ORB}~中展示了一张图像提取ORB之后的结果，下面来介绍如何在不同的图像之间进行特征匹配。
 
@@ -141,97 +151,104 @@ BRIEF是一种\textbf{二进制}描述子，其描述向量由许多个0和1组�
 	\label{fig:exp1-images}
 \end{figure}
 
-目前主流的几种图像特征在OpenCV开源图像库中都已经集成，我们可以很方便地进行调用。下面就来实际练习一下OpenCV的图像特征提取、计算和匹配的过程。我们为此实验准备了两张图像，位于slambook/ch7/下的1.png和2.png，如\autoref{fig:exp1-images}~所示。它们是来自公开数据集\cite{Sturm2012}中的两张图像，我们看到相机发生了微小的运动。本节程序演示如何提取ORB特征并进行匹配。下一个程序将演示如何估计相机运动。
+OpenCV已经集成了多数主流的图像特征，我们可以很方便地进行调用。下面我们来完成两个实验：第一个实验中，我们演示使用OpenCV进行ORB的特征匹配；第二个实验中，我们演示如何根据前面介绍的原理，手写一个简单的ORB特征。通过手写的过程，读者可以更加清楚地理解ORB的计算过程，并类推到其他特征上去。
 
-特征提取与匹配代码：
-\begin{lstlisting}[language=c++,caption=slambook/ch7/feature_extraction.cpp]
+\subsection{OpenCV的ORB特征}
+首先我们调用OpenCV来提取和匹配ORB。我为此实验准备了两张图像，位于slambook2/ch7/下的1.png和2.png，如\autoref{fig:exp1-images}~所示。它们是来自公开数据集\cite{Sturm2012}中的两张图像，我们看到相机发生了微小的运动。本节程序演示如何提取ORB特征并进行匹配。下一小节中，我们将演示如何用匹配结果来估计相机运动。
+
+下面程序演示了ORB的使用方法：
+\begin{lstlisting}[language=c++,caption=slambook/ch7/orb_cv.cpp]
 #include <iostream>
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <chrono>
 
 using namespace std;
 using namespace cv;
 
-int main ( int argc, char** argv )
-{
-	if ( argc != 3 )
-	{
-		cout<<"usage: feature_extraction img1 img2"<<endl;
-		return 1;
-	}
-	//-- 读取图像
-	Mat img_1 = imread ( argv[1], CV_LOAD_IMAGE_COLOR );
-	Mat img_2 = imread ( argv[2], CV_LOAD_IMAGE_COLOR );
-
-	//-- 初始化
-	std::vector<KeyPoint> keypoints_1, keypoints_2;
-	Mat descriptors_1, descriptors_2;
-	Ptr<ORB> orb = ORB::create ( 500, 1.2f, 8, 31, 0, 2, ORB::HARRIS_SCORE,31,20 );
-
-	//-- 第1步：检测 Oriented FAST 角点位置
-	orb->detect ( img_1,keypoints_1 );
-	orb->detect ( img_2,keypoints_2 );
-
-	//-- 第2步：根据角点位置计算 BRIEF 描述子
-	orb->compute ( img_1, keypoints_1, descriptors_1 );
-	orb->compute ( img_2, keypoints_2, descriptors_2 );
-
-	Mat outimg1;
-	drawKeypoints( img_1, keypoints_1, outimg1, Scalar::all(-1), DrawMatchesFlags::DEFAULT );
-	imshow("ORB特征点",outimg1);
-
-	//-- 第3步：对两幅图像中的BRIEF描述子进行匹配，使用 Hamming 距离
-	vector<DMatch> matches;
-	BFMatcher matcher ( NORM_HAMMING );
-	matcher.match ( descriptors_1, descriptors_2, matches );
-
-	//-- 第4步：匹配点对筛选
-	double min_dist=10000, max_dist=0;
-
-	// 找出所有匹配之间的最小距离和最大距离，即最相似的和最不相似的两组点之间的距离
-	for ( int i = 0; i < descriptors_1.rows; i++ )
-	{
-		double dist = matches[i].distance;
-		if ( dist < min_dist ) min_dist = dist;
-		if ( dist > max_dist ) max_dist = dist;
-	}
-	
-	printf ( "-- Max dist : %f \n", max_dist );
-	printf ( "-- Min dist : %f \n", min_dist );
-
-	// 当描述子之间的距离大于两倍的最小距离时，即认为匹配有误。
-	// 但有时候最小距离会非常小，设置一个经验值作为下限。
-	std::vector< DMatch > good_matches;
-	for ( int i = 0; i < descriptors_1.rows; i++ )
-	{
-		if ( matches[i].distance <= max ( 2*min_dist, 30.0 ) )
-		{
-			good_matches.push_back ( matches[i] );
-		}
-	}
-
-	//-- 第5步：绘制匹配结果
-	Mat img_match;
-	Mat img_goodmatch;
-	drawMatches ( img_1, keypoints_1, img_2, keypoints_2, matches, img_match );
-	drawMatches ( img_1, keypoints_1, img_2, keypoints_2, good_matches, img_goodmatch );
-	imshow ( "所有匹配点对", img_match );
-	imshow ( "优化后匹配点对", img_goodmatch );
-	waitKey(0);
-	
-	return 0;
+int main(int argc, char **argv) {
+    if (argc != 3) {
+        cout << "usage: feature_extraction img1 img2" << endl;
+        return 1;
+    }
+    //-- 读取图像
+    Mat img_1 = imread(argv[1], CV_LOAD_IMAGE_COLOR);
+    Mat img_2 = imread(argv[2], CV_LOAD_IMAGE_COLOR);
+    assert(img_1.data != nullptr && img_2.data != nullptr);
+    
+    //-- 初始化
+    std::vector<KeyPoint> keypoints_1, keypoints_2;
+    Mat descriptors_1, descriptors_2;
+    Ptr<FeatureDetector> detector = ORB::create();
+    Ptr<DescriptorExtractor> descriptor = ORB::create();
+    Ptr<DescriptorMatcher> matcher = DescriptorMatcher::create("BruteForce-Hamming");
+    
+    //-- 第一步:检测 Oriented FAST 角点位置
+    chrono::steady_clock::time_point t1 = chrono::steady_clock::now();
+    detector->detect(img_1, keypoints_1);
+    detector->detect(img_2, keypoints_2);
+    
+    //-- 第二步:根据角点位置计算 BRIEF 描述子
+    descriptor->compute(img_1, keypoints_1, descriptors_1);
+    descriptor->compute(img_2, keypoints_2, descriptors_2);
+    chrono::steady_clock::time_point t2 = chrono::steady_clock::now();
+    chrono::duration<double> time_used = chrono::duration_cast<chrono::duration<double>>(t2 - t1);
+    cout << "extract ORB cost = " << time_used.count() << " seconds. " << endl;
+    
+    Mat outimg1;
+    drawKeypoints(img_1, keypoints_1, outimg1, Scalar::all(-1), DrawMatchesFlags::DEFAULT);
+    imshow("ORB features", outimg1);
+    
+    //-- 第三步:对两幅图像中的BRIEF描述子进行匹配，使用 Hamming 距离
+    vector<DMatch> matches;
+    t1 = chrono::steady_clock::now();
+    matcher->match(descriptors_1, descriptors_2, matches);
+    t2 = chrono::steady_clock::now();
+    time_used = chrono::duration_cast<chrono::duration<double>>(t2 - t1);
+    cout << "match ORB cost = " << time_used.count() << " seconds. " << endl;
+    
+    //-- 第四步:匹配点对筛选
+    // 计算最小距离和最大距离
+    auto min_max = minmax_element(matches.begin(), matches.end(),
+        [](const DMatch &m1, const DMatch &m2) { return m1.distance < m2.distance; });
+    double min_dist = min_max.first->distance;
+    double max_dist = min_max.second->distance;
+    
+    printf("-- Max dist : %f \n", max_dist);
+    printf("-- Min dist : %f \n", min_dist);
+    
+    //当描述子之间的距离大于两倍的最小距离时,即认为匹配有误.但有时候最小距离会非常小,设置一个经验值30作为下限.
+    std::vector<DMatch> good_matches;
+    for (int i = 0; i < descriptors_1.rows; i++) {
+        if (matches[i].distance <= max(2 * min_dist, 30.0)) {
+            good_matches.push_back(matches[i]);
+        }
+    }
+    
+    //-- 第五步:绘制匹配结果
+    Mat img_match;
+    Mat img_goodmatch;
+    drawMatches(img_1, keypoints_1, img_2, keypoints_2, matches, img_match);
+    drawMatches(img_1, keypoints_1, img_2, keypoints_2, good_matches, img_goodmatch);
+    imshow("all matches", img_match);
+    imshow("good matches", img_goodmatch);
+    waitKey(0);
+    
+    return 0;
 }
 \end{lstlisting}
 
 运行此程序（需要输入两个图像位置），将输出运行结果：
-\begin{lstlisting}[language=sh]
-% build/feature_extraction 1.png 2.png
+\begin{lstlisting}[language=sh,caption=终端输入：]
+% build/orb_cv 1.png 2.png
+extract ORB cost = 0.0229183 seconds. 
+match ORB cost = 0.000751868 seconds.
 -- Max dist : 95.000000 
 -- Min dist : 4.000000 
 \end{lstlisting}
 
-\autoref{fig:exp1-results}~显示了例程的运行结果。我们看到未筛选的匹配中带有大量的误匹配。经过一次筛选之后，匹配数量减少了许多，但大多数匹配都是正确的。这里，筛选的依据是\textbf{汉明距离小于最小距离的两倍}，这是一种工程上的经验方法，不一定有理论依据。不过，尽管在示例图像中能够筛选出正确的匹配，但我们仍然不能保证在所有其他图像中得到的匹配都是正确的。因此，在后面的运动估计中，还需要使用去除误匹配的算法。
+\autoref{fig:exp1-results}~显示了例程的运行结果。我们看到未筛选的匹配中带有大量的误匹配。经过一次筛选之后，匹配数量减少了许多，但大多数匹配都是正确的。这里，筛选的依据是\textbf{汉明距离小于最小距离的两倍}，这是一种工程上的经验方法，不一定有理论依据。不过，尽管在示例图像中能够筛选出正确的匹配，但我们仍然不能保证在所有其他图像中得到的匹配都是正确的。因此，在后面的运动估计中，还需要使用去除误匹配的算法。在我的机器上，ORB提取花费了22.9毫秒（两张图像），匹配花费了0.75毫秒，可见大部分计算量花在了特征提取上。
 
 \begin{figure}[!htp]
 	\centering
@@ -240,15 +257,117 @@ int main ( int argc, char** argv )
 	\label{fig:exp1-results} 
 \end{figure}
 
-接下来，我们希望根据匹配的点对估计相机的运动。这里由于相机的原理不同，情况发生了变化：
+\subsection{手写ORB特征}
+下面我们演示手写ORB特征的方法。这部分代码比较多，书上只展示核心部分的代码，其余的周边代码请读者从代码库中获取。
+\begin{lstlisting}[language=c++,caption=slambook/ch7/orb_self.cpp（片段）]
+typedef vector<uint32_t> DescType;
+// ... 省略图片读取部分代码和测试代码
+// compute the descriptor
+void ComputeORB(const cv::Mat &img, vector<cv::KeyPoint> &keypoints, vector<DescType> &descriptors) {
+    const int half_patch_size = 8;
+    const int half_boundary = 16;
+    int bad_points = 0;
+    for (auto &kp: keypoints) {
+        if (kp.pt.x < half_boundary || kp.pt.y < half_boundary ||
+        kp.pt.x >= img.cols - half_boundary || kp.pt.y >= img.rows - half_boundary) {
+            // outside
+            bad_points++;
+            descriptors.push_back({});
+            continue;
+        }
+    
+        float m01 = 0, m10 = 0;
+        for (int dx = -half_patch_size; dx < half_patch_size; ++dx) {
+            for (int dy = -half_patch_size; dy < half_patch_size; ++dy) {
+                uchar pixel = img.at<uchar>(kp.pt.y + dy, kp.pt.x + dx);
+                m01 += dx * pixel;
+                m10 += dy * pixel;
+            }
+        }
+    
+        // angle should be arc tan(m01/m10);
+        float m_sqrt = sqrt(m01 * m01 + m10 * m10);
+        float sin_theta = m01 / m_sqrt;
+        float cos_theta = m10 / m_sqrt;
+        
+        // compute the angle of this point
+        DescType desc(8, 0);
+        for (int i = 0; i < 8; i++) {
+            uint32_t d = 0;
+            for (int k = 0; k < 32; k++) {
+                int idx_pq = i * 8 + k;
+                cv::Point2f p(ORB_pattern[idx_pq * 4], ORB_pattern[idx_pq * 4 + 1]);
+                cv::Point2f q(ORB_pattern[idx_pq * 4 + 2], ORB_pattern[idx_pq * 4 + 3]);
+        
+                // rotate with theta
+                cv::Point2f pp = cv::Point2f(cos_theta * p.x - sin_theta * p.y, sin_theta * p.x + cos_theta * p.y) + kp.pt;
+                cv::Point2f qq = cv::Point2f(cos_theta * q.x - sin_theta * q.y, sin_theta * q.x + cos_theta * q.y) + kp.pt;
+                if (img.at<uchar>(pp.y, pp.x) < img.at<uchar>(qq.y, qq.x)) {
+                    d |= 1 << k;
+                }
+            }
+            desc[i] = d;
+        }
+        descriptors.push_back(desc);
+    }
+    
+    cout << "bad/total: " << bad_points << "/" << keypoints.size() << endl;
+}
+
+// brute-force matching
+void BfMatch(
+    const vector<DescType> &desc1, const vector<DescType> &desc2, vector<cv::DMatch> &matches) {
+    const int d_max = 40;
+    
+    for (size_t i1 = 0; i1 < desc1.size(); ++i1) {
+        if (desc1[i1].empty()) continue;
+        cv::DMatch m{i1, 0, 256};
+        for (size_t i2 = 0; i2 < desc2.size(); ++i2) {
+            if (desc2[i2].empty()) continue;
+            int distance = 0;
+            for (int k = 0; k < 8; k++) {
+                distance += _mm_popcnt_u32(desc1[i1][k] ^desc2[i2][k]);
+            }
+            if (distance < d_max && distance < m.distance) {
+                m.distance = distance;
+                m.trainIdx = i2;
+            }
+        }
+        if (m.distance < d_max) {
+            matches.push_back(m);
+        }
+    }
+}
+\end{lstlisting}
+这个演示中我们只展示ORB的计算代码和匹配代码。在计算中，我们用256位的二进制描述，即对应到8个32位的unsigned int数据，用typedef将它表示成DescType。然后，我们根据前面介绍的原理计算FAST特征点的角度，再使用该角度计算描述子。此代码中通过三角函数的原理回避了复杂的$\arctan$以及$\sin$、$\cos$计算，从而达到加速的效果。在BfMatch函数中，我们还使用了SSE指令集中的\_mm\_popcnt\_u32函数来计算一个unsigned int变量中1的个数，从而达到计算汉明距离的效果。该段程序的运行结果如下，匹配结果如\autoref{fig:matches}所示：
+
+\begin{lstlisting}[language=sh,caption=终端输出：]
+bad/total: 43/638
+bad/total: 8/595
+extract ORB cost = 0.00390721 seconds.
+match ORB cost = 0.000862984 seconds.
+matches: 51
+\end{lstlisting}
+
+\begin{figure}[!htp]
+    \centering
+    \includegraphics[width=0.8\linewidth]{vo1/matches}
+    \caption{匹配结果}
+    \label{fig:matches}
+\end{figure}
+
+可见，这个程序中，ORB的提取只需要3.9毫秒，匹配只需0.86毫秒。我们通过一些简单的算法修改，对ORB的提取加速了5.8倍。请读者注意，编译这个程序需要你的CPU支持SSE指令集，这应该在绝大多数现代的家用CPU上都已经支持。如果我们能够对提取特征部分进一步并行化处理，算法还可以有加速的空间。
+
+\subsection{计算相机运动}
+我们已经有了匹配好的点对，接下来，我们要根据点对来估计相机的运动。这里由于相机的原理不同，情况发生了变化：
 
 \begin{enumerate}
 	\item 当相机为单目时，我们只知道2D的像素坐标，因而问题是根据\textbf{两组2D点}估计运动。该问题用\textbf{对极几何}来解决。
 	\item 当相机为双目、RGB-D时，或者通过某种方法得到了距离信息，那么问题就是根据\textbf{两组3D点}估计运动。该问题通常用ICP来解决。
-	\item 如果有3D点及其在相机的投影位置，也能估计相机的运动。该问题通过\textbf{PnP}求解。
+	\item 如果一组为3D，一组为2D，即，我们得到了一些3D点和它们在相机的投影位置，也能估计相机的运动。该问题通过\textbf{PnP}求解。
 \end{enumerate}
 
-因此，下面几节就来介绍这三种情形下的相机运动估计。我们将从最基本的2D−2D情形出发，看看它如何求解，求解过程又具有哪些麻烦的问题。
+因此，下面几节就来介绍这三种情形下的相机运动估计。我们将从信息最少的2D−2D情形出发，看看它如何求解，求解过程又有哪些麻烦的问题。
 
 \section{2D−2D: 对极几何}
 \label{sec:epipolar-geometry}
@@ -266,9 +385,9 @@ int main ( int argc, char** argv )
 
 以\autoref{fig:doubleview}~为例，我们希望求取两帧图像$I_{1}, I_{2}$之间的运动，设第一帧到第二帧的运动为$\bm{R}, \bm{t}$。两个相机中心分别为$O_{1}, O_{2}$。现在，考虑$I_{1}$中有一个特征点$p_{1}$，它在$I_{2}$中对应着特征点$p_{2}$。我们知道两者是通过特征匹配得到的。如果匹配正确，说明它们确实是\textbf{同一个空间点在两个成像平面上的投影}。这里需要一些术语来描述它们之间的几何关系。首先，连线$\overrightarrow{O_{1}p_{1}}$和连线$\overrightarrow{O_{2}p_{2}}$在三维空间中会相交于点$P$。这时候点$O_{1},O_{2},P$三个点可以确定一个平面，称为\textbf{极平面（Epipolar plane）}。$O_{1}O_{2}$连线与像平面$I_{1},I_{2}$的交点分别为$e_{1},e_{2}$。$e_{1},e_{2}$称为\textbf{极点（Epipoles）}，$O_{1}O_{2}$被称为\textbf{基线（Baseline）}。我们称极平面与两个像平面$I_{1}, I_{2}$之间的相交线$l_{1},l_{2}$为\textbf{极线（Epipolar line）}。
 
-直观讲，从第一帧的角度看，射线$\overrightarrow{O_1 p_1}$是\textbf{某个像素可能出现的空间位置}——因为该射线上的所有点都会投影到同一个像素点。同时，如果不知道$P$的位置，那么当我们在第二幅图像上看时，连线$\overrightarrow{e_2 p_2}$（也就是第二幅图像中的极线）就是$P$可能出现的投影的位置，也就是射线$\overrightarrow{O_1 p_1}$在第二个相机中的投影。现在，由于我们通过特征点匹配确定了$p_2$的像素位置，所以能够推断$P$的空间位置，以及相机的运动。要提醒读者的是，\textbf{这完全多亏了正确的特征匹配}。如果没有特征匹配，我们就没法确定$p_2$到底在极线的哪个位置了。那时，就必须在极线上搜索以获得正确的匹配，这将在第13讲中提到。
+直观讲，从第一帧的角度看，射线$\overrightarrow{O_1 p_1}$是\textbf{某个像素可能出现的空间位置}——因为该射线上的所有点都会投影到同一个像素点。同时，如果不知道$P$的位置，那么当我们在第二幅图像上看时，连线$\overrightarrow{e_2 p_2}$（也就是第二幅图像中的极线）就是$P$可能出现的投影的位置，也就是射线$\overrightarrow{O_1 p_1}$在第二个相机中的投影。现在，由于我们通过特征点匹配确定了$p_2$的像素位置，所以能够推断$P$的空间位置，以及相机的运动。要提醒读者的是，\textbf{这多亏了正确的特征匹配}。如果没有特征匹配，我们就没法确定$p_2$到底在极线的哪个位置了。那时，就必须在极线上搜索以获得正确的匹配，这将在第12讲中提到。
 
-现在，我们从代数角度来看一下这里出现的几何关系。在第一帧的坐标系下，设$P$的空间位置为
+现在，我们从代数角度来看一下这里的几何关系。在第一帧的坐标系下，设$P$的空间位置为
 \[
 \bm{P}=[X,Y,Z]^\mathrm{T}.
 \]
@@ -277,9 +396,15 @@ int main ( int argc, char** argv )
 s_1 {\bm{p}_1} = \bm{KP},\quad s_2 \bm{p}_2 = \bm{K}\left( \bm{RP + t} \right).
 \end{equation}
 
-这里$\bm{K}$为相机内参矩阵，$\bm{R}, \bm{t}$为两个坐标系的相机运动（如果我们愿意，也可以写成李代数形式）。如果使用齐次坐标，也可以把上式写成在乘以非零常数下成立的（up to a scale）等式\footnote{也就是说，在等式一侧乘以任意非零常数时，我们认为等式仍是成立的。}：
+这里$\bm{K}$为相机内参矩阵，$\bm{R}, \bm{t}$为两个坐标系的相机运动。具体来说，这里计算的是$\bm{R}_{21}$和$\bm{t}_{21}$，因为它们把第一个坐标系下的坐标转换到第二个坐标系下。如果我们愿意，也可以把它们写成李代数形式。
+
+有时候，我们会使用齐次坐标表示像素点。在使用齐次坐标时，一个向量将等于它自身乘上任意的非零常数。这通常用于表达一个投影关系。例如$s_1 \bm{p}_1$和$\bm{p}_1$成投影关系，它们在齐次坐标的意义下是相等的。我们称这种相等关系为\textbf{尺度意义下相等}（equal up to a scale），记作：
 \begin{equation}
- {\bm{p}_1} = \bm{KP},\quad \bm{p}_2 = \bm{K}\left( \bm{RP + t} \right).
+s\bm{p} \simeq \bm{p}.
+\end{equation}
+那么，上述两个投影关系可写为：
+\begin{equation}
+ {\bm{p}_1} \simeq \bm{KP},\quad \bm{p}_2 \simeq \bm{K}\left( \bm{RP + t} \right).
 \end{equation}
 
 现在，取：
@@ -289,20 +414,20 @@ s_1 {\bm{p}_1} = \bm{KP},\quad s_2 \bm{p}_2 = \bm{K}\left( \bm{RP + t} \right).
 
 这里的$\bm{x}_1, \bm{x}_2$是两个像素点的归一化平面上的坐标。代入上式，得：
 \begin{equation}
-{\bm{x}_2} = \bm{R} {\bm{x}_1} + \bm{t}.
+{\bm{x}_2} \simeq \bm{R} {\bm{x}_1} + \bm{t}.
 \end{equation}
 
 两边同时左乘$\bm{t}^\wedge$。回忆$^\wedge$的定义，这相当于两侧同时与$\bm{t}$做外积：
 \begin{equation}
-\bm{t}^\wedge \bm{x}_2 = \bm{t}^\wedge \bm{R} \bm{x}_1.
+\bm{t}^\wedge \bm{x}_2 \simeq \bm{t}^\wedge \bm{R} \bm{x}_1.
 \end{equation}
 
 然后，两侧同时左乘$\bm{x}_2^\mathrm{T}$：
 \begin{equation}
-\bm{x}_2^\mathrm{T} \bm{t}^\wedge \bm{x}_2 = \bm{x}_2^\mathrm{T} \bm{t}^\wedge \bm{R} \bm{x}_1.
+\bm{x}_2^\mathrm{T} \bm{t}^\wedge \bm{x}_2 \simeq \bm{x}_2^\mathrm{T} \bm{t}^\wedge \bm{R} \bm{x}_1.
 \end{equation}
 
-观察等式左侧，$\bm{t}^\wedge \bm{x}_2$是一个与$\bm{t}$和$\bm{x}_2$都垂直的向量。把它再和$\bm{x}_2$做内积时，将得到0。因此，我们就得到了一个简洁的式子：
+观察等式左侧，$\bm{t}^\wedge \bm{x}_2$是一个与$\bm{t}$和$\bm{x}_2$都垂直的向量。把它再和$\bm{x}_2$做内积时，将得到0。由于等式左侧严格为零，那么乘以任意非零常数之后也为零，于是我们可以把$\simeq$写成通常的等号。因此，我们就得到了一个简洁的式子：
 \begin{equation}
  \bm{x}_2^\mathrm{T} \bm{t}^\wedge \bm{R} \bm{x}_1 = 0.
 \end{equation}
@@ -332,16 +457,15 @@ s_1 {\bm{p}_1} = \bm{KP},\quad s_2 \bm{p}_2 = \bm{K}\left( \bm{RP + t} \right).
 \begin{itemize}
 	\item 本质矩阵是由对极约束定义的。由于对极约束是\textbf{等式为零}的约束，所以对$\bm{E}$乘以任意非零常数后，\textbf{对极约束依然满足}。我们把这件事情称为$\bm{E}$在不同尺度下是等价的。
 	\item 根据$\bm{E} = \bm{t}^ \wedge \bm{R}$，可以证明\textsuperscript{\cite{Hartley2003}}，本质矩阵$\bm{E}$的奇异值必定是$[\sigma, \sigma, 0]^\mathrm{T}$的形式。这称为\textbf{本质矩阵的内在性质}。
-\clearpage
 	\item 另一方面，由于平移和旋转各有3个自由度，故$\bm{t}^\wedge \bm{R}$共有6个自由度。但由于尺度等价性，故$\bm{E}$实际上有5个自由度。
 \end{itemize}
 
-$\bm{E}$具有5个自由度的事实，表明我们最少可以用5对点来求解$\bm{E}$。但是，$\bm{E}$的内在性质是一种非线性性质，在求解线性方程时会带来麻烦，因此，也可以只考虑它的\textbf{尺度等价性}，使用8对点来估计$\bm{E}$——这就是经典的\textbf{八点法（Eight-point-algorithm）}\textsuperscript{\cite{Hartley1997, Longuet-Higgins1987}}。八点法只利用了$\bm{E}$的线性性质，因此可以在线性代数框架下求解。下面我们来看八点法是如何工作的。
+$\bm{E}$具有5个自由度的事实，表明我们最少可以用5对点来求解$\bm{E}$。但是，$\bm{E}$的内在性质是一种非线性性质，在估计时会带来麻烦，因此，也可以只考虑它的\textbf{尺度等价性}，使用8对点来估计$\bm{E}$——这就是经典的\textbf{八点法（Eight-point-algorithm）}\textsuperscript{\cite{Hartley1997, Longuet-Higgins1987}}。八点法只利用了$\bm{E}$的线性性质，因此可以在线性代数框架下求解。下面我们来看八点法是如何工作的。
 
 考虑一对匹配点，它们的归一化坐标为$\bm{x}_{1}=[u_{1},v_{1},1]^\mathrm{T}$, $\bm{x}_{2}=[u_{2},v_{2},1]^{\mathrm{T}}$。根据对极约束，有：
 \begin{equation}
 \begin{pmatrix} 
-u_{1},v_{1},1
+u_{2},v_{2},1
 \end{pmatrix}
 \begin{pmatrix}
  e_{1} & e_{2} & e_{3}\\ 
@@ -349,7 +473,7 @@ u_{1},v_{1},1
  e_{7} & e_{8} & e_{9} 
 \end{pmatrix}
 \begin{pmatrix} 
-u_{2}\\v_{2}\\1
+u_{1}\\v_{1}\\1
 \end{pmatrix}
 =0.
 \end{equation}
@@ -360,17 +484,17 @@ u_{2}\\v_{2}\\1
 \]
 那么对极约束可以写成与$\bm{e}$有关的线性形式：
 \begin{equation}
-[u_{1}u_{2},u_{1}v_{2},u_{1},v_{1}u_{2},v_{1}v_{2},v_{1},u_{2},v_{2},1] \cdot  \bm{e}=0.
+[u_{2}u_{1},u_{2}v_{1},u_{2},v_{2}u_{1},v_{2}v_{1},v_{2},u_{1},v_{1},1] \cdot  \bm{e}=0.
 \end{equation}
 
-同理，对于其他点对也有相同的表示。我们把所有点都放到一个方程中，变成线性方程组（$u^i, v^i$表示第$i$个特征点，以此类推）：
+同理，对于其他点对也有相同的表示。我们把所有点都放到一个方程中，变成线性方程组（$u^i, v^i$表示第$i$个特征点，依此类推）：
 \begin{equation}
 \label{Eq:eight-point}
 \begin{pmatrix}
-u_{1}^{1}u_{2}^{1}& u_{1}^{1}v_{2}^{1}& u_{1}^{1}& v_{1}^{1}u_{2}^{1}& v_{1}^{1}v_{2}^{1}& v_{1}^{1} &u_{2}^{1} &v_{2}^{1}&1\\
-u_{1}^{2}u_{2}^{2}& u_{1}^{2}v_{2}^{2}& u_{1}^{2}& v_{1}^{2}u_{2}^{2}& v_{1}^{2}v_{2}^{2}& v_{1}^{2} &u_{2}^{2} &v_{2}^{2}&1\\
+u_{2}^{1}u_{1}^{1}& u_{2}^{1}v_{1}^{1}& u_{2}^{1}& v_{2}^{1}u_{1}^{1}& v_{2}^{1}v_{1}^{1}& v_{2}^{1} &u_{1}^{1} &v_{1}^{1}&1\\
+u_{2}^{2}u_{1}^{2}& u_{2}^{2}v_{1}^{2}& u_{2}^{2}& v_{2}^{2}u_{1}^{2}& v_{2}^{2}v_{1}^{2}& v_{2}^{2} &u_{1}^{2} &v_{1}^{2}&1\\
 \vdots & \vdots & \vdots & \vdots & \vdots & \vdots & \vdots & \vdots \\
-u_{1}^{8}u_{2}^{8}& u_{1}^{8}v_{2}^{8}& u_{1}^{8}& v_{1}^{8}u_{2}^{8}& v_{1}^{8}v_{2}^{8}& v_{1}^{8} &u_{2}^{8}&v_{2}^{8}&1\\
+u_{2}^{8}u_{1}^{8}& u_{2}^{8}v_{1}^{8}& u_{2}^{8}& v_{2}^{8}u_{1}^{8}& v_{2}^{8}v_{1}^{8}& v_{2}^{8} &u_{1}^{8}&v_{1}^{8}&1\\
 \end{pmatrix}
 \begin{pmatrix}
 e_{1}\\ e_{2}\\ e_{3}\\  e_{4}\\ e_{5}\\ e_{6}\\ e_{7}\\ e_{8}\\ e_{9}  
@@ -378,7 +502,6 @@ e_{1}\\ e_{2}\\ e_{3}\\  e_{4}\\ e_{5}\\ e_{6}\\ e_{7}\\ e_{8}\\ e_{9}
 =0.
 \end{equation}
 
-\clearpage
 这8个方程构成了一个线性方程组。它的系数矩阵由特征点位置构成，大小为$8 \times 9$。$\bm{e}$位于该矩阵的零空间中。如果系数矩阵是满秩的（即秩为8），那么它的零空间维数为1，也就是$\bm{e}$构成一条线。这与$\bm{e}$的尺度等价性是一致的。如果8对匹配点组成的矩阵满足秩为8的条件，那么$\bm{E}$的各元素就可由上述方程解得。
 
 接下来的问题是如何根据已经估得的本质矩阵$\bm{E}$，恢复出相机的运动$\bm{R}, \bm{t}$。这个过程是由奇异值分解（SVD）得到的。设$\bm{E}$的SVD分解为
@@ -404,16 +527,16 @@ e_{1}\\ e_{2}\\ e_{3}\\  e_{4}\\ e_{5}\\ e_{6}\\ e_{7}\\ e_{8}\\ e_{9}
 	\label{fig:epipolar-solution}
 \end{figure}
 
-如果利用$\bm{E}$的内在性质，那么它只有5个自由度。所以最小可以通过5对点来求解相机运动\textsuperscript{\cite{Li2006, Nister2004a}}。然而这种做法形式复杂，从工程实现角度考虑，由于平时通常会有几十对乃至上百对的匹配点，从8对减至5对意义并不明显。为保持简单，我们这里就只介绍基本的八点法。
+如果利用$\bm{E}$的内在性质，那么它只有5个自由度。所以最少可以通过5对点来求解相机运动\textsuperscript{\cite{Li2006, Nister2004a}}。然而这种做法形式复杂，从工程实现角度考虑，由于平时通常会有几十对乃至上百对的匹配点，从8对减至5对意义并不明显。为保持简单，我们这里就只介绍基本的八点法。
 
-剩下的问题还有一个：根据线性方程解出的$\bm{E}$，可能不满足$\bm{E}$的内在性质——它的奇异值不一定为${\sigma}, {\sigma}, 0$的形式。这时，在做SVD时我们会刻意地把$\bm{\Sigma}$矩阵调整成上面的样子。通常的做法是，对八点法求得的$\bm{E}$进行SVD分解后，会得到奇异值矩阵$\bm{\Sigma} =  \mathrm{diag} ( \sigma_1, \sigma_2, \sigma_3)$，不妨设$\sigma_1 \geqslant \sigma_2 \geqslant \sigma_3$。取：
+剩下的问题还有一个：根据线性方程解出的$\bm{E}$，可能不满足$\bm{E}$的内在性质——它的奇异值不一定为${\sigma}, {\sigma}, 0$的形式。这时，我们会刻意地把$\bm{\Sigma}$矩阵调整成上面的样子。通常的做法是，对八点法求得的$\bm{E}$进行SVD分解后，会得到奇异值矩阵$\bm{\Sigma} =  \mathrm{diag} ( \sigma_1, \sigma_2, \sigma_3)$，不妨设$\sigma_1 \geqslant \sigma_2 \geqslant \sigma_3$。取：
 \begin{equation}
 \bm{E} = \bm{U} \mathrm{diag} (\frac{\sigma_1+\sigma_2}{2}, \frac{\sigma_1+\sigma_2}{2}, 0) \bm{V}^\mathrm{T}.
 \end{equation}
 这相当于是把求出来的矩阵投影到了$\bm{E}$所在的流形上。当然，更简单的做法是将奇异值矩阵取成$\mathrm{diag} (1,1,0)$，因为$\bm{E}$具有尺度等价性，所以这样做也是合理的。
 
 \subsection{单应矩阵}
-除了基本矩阵和本质矩阵，还有单应矩阵（Homography）$\bm{H}$，它描述了两个平面之间的映射关系。若场景中的特征点都落在同一平面上（比如墙、地面等），则可以通过单应性来进行运动估计。这种情况在无人机携带的俯视相机或扫地机携带的顶视相机中比较常见。由于之前没有提到过单应，因此这里稍微介绍一下。
+除了基本矩阵和本质矩阵，二视图几何中还存在另一种常见的矩阵：单应矩阵（Homography）$\bm{H}$，它描述了两个平面之间的映射关系。若场景中的特征点都落在同一平面上（比如墙、地面等），则可以通过单应性来进行运动估计。这种情况在无人机携带的俯视相机或扫地机携带的顶视相机中比较常见。由于之前没有提到过单应，因此这里稍微介绍一下。
 
 单应矩阵通常描述处于共同平面上的一些点在两张图像之间的变换关系。考虑在图像$I_{1}$和$I_{2}$有一对匹配好的特征点$p_{1}$和$p_{2}$。这些特征点落在平面$P$上，设这个平面满足方程：
 \begin{equation}
@@ -426,15 +549,15 @@ e_{1}\\ e_{2}\\ e_{3}\\  e_{4}\\ e_{5}\\ e_{6}\\ e_{7}\\ e_{8}\\ e_{9}
 
 然后，回顾本节开头的式(7.1)，得：
 \begin{align*}
-\bm{p}_2 &= \bm{K} ( \bm{R} \bm{P} + \bm{t} ) \\ 
-&= \bm{K} \left( \bm{R} \bm{P} + \bm{t} \cdot (- \frac{\bm{n}^\mathrm{T} \bm{P} }{d}) \right) \\
-&= \bm{K} \left( \bm{R} - \frac{\bm{t} \bm{n}^\mathrm{T} }{d} \right) \bm{P} \\ 
-&= \bm{K} \left( \bm{R} - \frac{\bm{t} \bm{n}^\mathrm{T} }{d} \right) \bm{K}^{-1} \bm{p}_1.
+\bm{p}_2 &\simeq \bm{K} ( \bm{R} \bm{P} + \bm{t} ) \\ 
+&\simeq \bm{K} \left( \bm{R} \bm{P} + \bm{t} \cdot (- \frac{\bm{n}^\mathrm{T} \bm{P} }{d}) \right) \\
+&\simeq \bm{K} \left( \bm{R} - \frac{\bm{t} \bm{n}^\mathrm{T} }{d} \right) \bm{P} \\ 
+&\simeq \bm{K} \left( \bm{R} - \frac{\bm{t} \bm{n}^\mathrm{T} }{d} \right) \bm{K}^{-1} \bm{p}_1.
 \end{align*}
 
 于是，我们得到了一个直接描述图像坐标$\bm{p}_1$和$\bm{p}_2$之间的变换，把中间这部分记为$\bm{H}$，于是：
 \begin{equation}
-\bm{p}_2 = \bm{H} \bm{p}_1.
+\bm{p}_2 \simeq \bm{H} \bm{p}_1.
 \end{equation}
 
 它的定义与旋转、平移及平面的参数有关。与基础矩阵$\bm{F}$类似，单应矩阵$\bm{H}$也是一个$3 \times 3$的矩阵，求解时的思路也和$\bm{F}$类似，同样可以先根据匹配点计算$\bm{H}$，然后将它分解以计算旋转和平移。把上式展开，得：
@@ -442,7 +565,7 @@ e_{1}\\ e_{2}\\ e_{3}\\  e_{4}\\ e_{5}\\ e_{6}\\ e_{7}\\ e_{8}\\ e_{9}
 \begin{pmatrix} 
 u_{2}\\v_{2}\\1
 \end{pmatrix}
-=
+\simeq
 \begin{pmatrix}
  h_{1} & h_{2} & h_{3}\\ 
  h_{4} & h_{5} & h_{6}\\ 
@@ -453,7 +576,7 @@ u_{1}\\v_{1}\\1
 \end{pmatrix}.
 \end{equation}
 
-请注意，这里的等号是在非零因子下成立的。我们在实际处理中通常乘以一个非零因子使得$h_9 = 1$（在它取非零值时）。然后根据第3行，去掉这个非零因子，于是有：
+请注意，这里的等号依然是$\simeq$而不是普通的等号，所以$\bm{H}$矩阵也可以乘以任意非零常数。我们在实际处理中可以令$h_9 = 1$（在它取非零值时）。然后根据第3行，去掉这个非零因子，于是有：
 \[
 \begin{aligned}
 u_{2}&=\frac{h_{1}u_{1}+h_{2}v_{1}+h_{3}}{h_{7}u_{1}+h_{8}v_{1}+h_{9}}\\
@@ -468,7 +591,7 @@ h_{4}u_{1}+h_{5}v_{1}+h_{6}-h_{7}u_{1}v_{2}-h_{8}v_{1}v_{2}=v_{2}.
 \end{gathered}
 \]
 
-这样一组匹配点对就可以构造出两项约束（事实上有三个约束，但是因为线性相关，只取前两个），于是自由度为8的单应矩阵可以通过4对匹配特征点算出（注意，这些特征点不能有三点共线的情况），即求解以下的线性方程组（当$h_9 = 0$时，右侧为零）：
+这样一组匹配点对就可以构造出两项约束（事实上有三个约束，但是因为线性相关，只取前两个），于是自由度为8的单应矩阵可以通过4对匹配特征点算出（在非退化的情况下，即这些特征点不能有三点共线的情况），即求解以下的线性方程组（当$h_9 = 0$时，右侧为零）：
 \begin{equation}
 \begin{pmatrix}
 u_{1}^{1}& v_{1}^{1}& 1 & 0 & 0 & 0 & -u_{1}^{1}u_{2}^{1} & -v_{1}^{1}u_{2}^{1}\\

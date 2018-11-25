@@ -1,4 +1,4 @@
-\begin{thebibliography}{10}
+\begin{thebibliography}{100}
 
 \bibitem{Liu2016}
 L.~Haomin, Z.~Guofeng, and B.~Hujun, ``A survey of monocular simultaneous
@@ -175,6 +175,142 @@ S.~Agarwal, K.~Mierle, and Others, ``Ceres solver.''
 R.~Kummerle, G.~Grisetti, H.~Strasdat, K.~Konolige, and W.~Burgard, ``G2o: a
   general framework for graph optimization,'' in {\em IEEE International
   Conference on Robotics and Automation (ICRA)}, pp.~3607--3613, IEEE, 2011.
+
+\bibitem{wiki:featurecv}
+Wikipedia, ``Feature (computer vision).''
+  \url{"https://en.wikipedia.org/wiki/Feature_(computer_vision)"}, 2016.
+\newblock [Online; accessed 09-July-2016].
+
+\bibitem{Harris1988}
+C.~Harris and M.~Stephens, ``A combined corner and edge detector.,'' in {\em
+  Alvey vision conference}, vol.~15, pp.~10--5244, Citeseer, 1988.
+
+\bibitem{Rosten2006}
+E.~Rosten and T.~Drummond, ``Machine learning for high-speed corner
+  detection,'' in {\em Computer Vision--ECCV 2006}, pp.~430--443, Springer,
+  2006.
+
+\bibitem{Shi1994}
+J.~Shi and C.~Tomasi, ``Good features to track,'' in {\em Computer Vision and
+  Pattern Recognition, 1994. Proceedings CVPR'94., 1994 IEEE Computer Society
+  Conference on}, pp.~593--600, IEEE, 1994.
+
+\bibitem{Lowe2004}
+D.~G. Lowe, ``Distinctive image features from scale-invariant keypoints,'' {\em
+  International Journal of Computer Vision}, vol.~60, no.~2, pp.~91--110, 2004.
+
+\bibitem{Bay2006}
+H.~Bay, T.~Tuytelaars, and L.~Van~Gool, ``Surf: Speeded up robust features,''
+  in {\em Computer Vision--ECCV 2006}, pp.~404--417, Springer, 2006.
+
+\bibitem{Rublee2011}
+E.~Rublee, V.~Rabaud, K.~Konolige, and G.~Bradski, ``Orb: an efficient
+  alternative to sift or surf,'' in {\em 2011 IEEE International Conference on
+  Computer Vision (ICCV)}, pp.~2564--2571, IEEE, 2011.
+
+\bibitem{calonder2010brief}
+M.~Calonder, V.~Lepetit, C.~Strecha, and P.~Fua, ``Brief: Binary robust
+  independent elementary features,'' in {\em European conference on computer
+  vision}, pp.~778--792, Springer, 2010.
+
+\bibitem{Nixon2012}
+M.~Nixon and A.~S. Aguado, {\em Feature extraction and image processing for
+  computer vision}.
+\newblock Academic Press, 2012.
+
+\bibitem{Rosin1999}
+P.~L. Rosin, ``Measuring corner properties,'' {\em Computer Vision and Image
+  Understanding}, vol.~73, no.~2, pp.~291--307, 1999.
+
+\bibitem{Muja2009}
+M.~Muja and D.~G. Lowe, ``Fast approximate nearest neighbors with automatic
+  algorithm configuration.,'' in {\em VISAPP (1)}, pp.~331--340, 2009.
+
+\bibitem{Hartley1997}
+R.~I. Hartley, ``In defense of the eight-point algorithm,'' {\em IEEE
+  Transactions on pattern analysis and machine intelligence}, vol.~19, no.~6,
+  pp.~580--593, 1997.
+
+\bibitem{Longuet-Higgins1987}
+H.~C. Longuet-Higgins, ``A computer algorithm for reconstructing a scene from
+  two projections,'' {\em Readings in Computer Vision: Issues, Problems,
+  Principles, and Paradigms, MA Fischler and O. Firschein, eds}, pp.~61--62,
+  1987.
+
+\bibitem{Li2006}
+H.~Li and R.~Hartley, ``Five-point motion estimation made easy,'' in {\em 18th
+  International Conference on Pattern Recognition (ICPR'06)}, vol.~1,
+  pp.~630--633, IEEE, 2006.
+
+\bibitem{Nister2004a}
+D.~Nist{\'e}r, ``An efficient solution to the five-point relative pose
+  problem,'' {\em IEEE Transactions on Pattern Analysis and Machine
+  Intelligence}, vol.~26, no.~6, pp.~756--770, 2004.
+
+\bibitem{faugeras1988motion}
+O.~D. Faugeras and F.~Lustman, ``Motion and structure from motion in a
+  piecewise planar environment,'' {\em International Journal of Pattern
+  Recognition and Artificial Intelligence}, vol.~2, no.~03, pp.~485--508, 1988.
+
+\bibitem{Zhang1996}
+Z.~Zhang and A.~R. Hanson, ``3d reconstruction based on homography mapping,''
+  {\em ARPA Image Understanding Workshop}, pp.~1007--1012, 1996.
+
+\bibitem{malis2007deeper}
+E.~Malis and M.~Vargas, {\em Deeper understanding of the homography
+  decomposition for vision-based control}.
+\newblock PhD thesis, INRIA, 2007.
+
+\bibitem{GaoHouTangEtAl2003}
+X.-S. Gao, X.-R. Hou, J.~Tang, and H.-F. Cheng, ``Complete solution
+  classification for the perspective-three-point problem,'' {\em IEEE
+  Transactions on Pattern Analysis and Machine Intelligence}, vol.~25,
+  pp.~930--943, Aug 2003.
+
+\bibitem{LepetitMoreno-NoguerFua2008}
+V.~Lepetit, F.~Moreno-Noguer, and P.~Fua, ``Epnp: An accurate o(n) solution to
+  the pnp problem,'' {\em International Journal of Computer Vision}, vol.~81,
+  no.~2, pp.~155--166, 2008.
+
+\bibitem{Penate-SanchezAndrade-CettoMoreno-Noguer2013}
+A.~Penate-Sanchez, J.~Andrade-Cetto, and F.~Moreno-Noguer, ``Exhaustive
+  linearization for robust camera pose and focal length estimation,'' {\em IEEE
+  Transactions on Pattern Analysis and Machine Intelligence}, vol.~35, no.~10,
+  pp.~2387--2400, 2013.
+
+\bibitem{Chen1994}
+L.~Chen, C.~W. Armstrong, and D.~D. Raftopoulos, ``An investigation on the
+  accuracy of three-dimensional space reconstruction using the direct linear
+  transformation technique,'' {\em Journal of Biomechanics}, vol.~27, no.~4,
+  pp.~493--500, 1994.
+
+\bibitem{web:p3p}
+iplimage, ``P3p(blog).''
+  \url{"http://iplimage.com/blog/p3p-perspective-point-overview/"}, 2016.
+
+\bibitem{Arun1987}
+K.~S. Arun, T.~S. Huang, and S.~D. Blostein, ``Least-squares fitting of two 3-d
+  point sets,'' {\em Pattern Analysis and Machine Intelligence, IEEE
+  Transactions on}, no.~5, pp.~698--700, 1987.
+
+\bibitem{PomerleauColasSiegwart2015}
+F.~Pomerleau, F.~Colas, and R.~Siegwart, ``A review of point cloud registration
+  algorithms for mobile robotics,'' {\em Foundations and Trends in Robotics
+  (FnTROB)}, vol.~4, no.~1, pp.~1--104, 2015.
+
+\bibitem{Faugeras1986}
+O.~D. Faugeras and M.~Hebert, ``The representation, recognition, and locating
+  of 3-d objects,'' {\em The International Journal of Robotics Research},
+  vol.~5, no.~3, pp.~27--52, 1986.
+
+\bibitem{Horn1987}
+B.~K. Horn, ``Closed-form solution of absolute orientation using unit
+  quaternions,'' {\em JOSA A}, vol.~4, no.~4, pp.~629--642, 1987.
+
+\bibitem{Sharp2002}
+G.~C. Sharp, S.~W. Lee, and D.~K. Wehe, ``Icp registration using invariant
+  features,'' {\em IEEE Transactions on Pattern Analysis and Machine
+  Intelligence}, vol.~24, no.~1, pp.~90--102, 2002.
 
 \bibitem{Davison2003}
 A.~J. Davison, ``Real-time simultaneous localisation and mapping with a single

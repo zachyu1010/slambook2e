@@ -319,14 +319,14 @@ $\rho$的分子是实际函数下降的值，分母是近似模型下降的值�
 
 不论如何，在列文伯格—马夸尔特优化中，我们都需要解式\eqref{eq:LM}那样一个子问题来获得梯度。这个子问题是带不等式约束的优化问题，我们用拉格朗日乘子把约束项放到目标函数中，构成拉格朗日函数：
 \begin{equation}
-\mathcal{L}(\Delta \bm{x}_k, \lambda)= \frac{1}{2} {\left\| {f\left( \bm{x}_k \right) + \bm{J} \left( \bm{x}_k \right)^\mathrm{T} \Delta \bm{x}_k} \right\|^2} + \frac{\lambda}{2} \left\| \bm{D} \Delta \bm{x}_k \right\|^2 .
+\mathcal{L}(\Delta \bm{x}_k, \lambda)= \frac{1}{2} {\left\| {f\left( \bm{x}_k \right) + \bm{J} \left( \bm{x}_k \right)^\mathrm{T} \Delta \bm{x}_k} \right\|^2} + \frac{\lambda}{2} \left( \left\| \bm{D} \Delta \bm{x}_k \right\|^2 - \mu \right).
 \end{equation}
 这里$\lambda$为拉格朗日乘子。类似于高斯牛顿法中的做法，令该拉格朗日函数关于$\Delta \bm{x}$的导数为零，它的核心仍是计算增量的线性方程：
 \begin{equation}
 \left( \bm{H} +\lambda \bm{D}^\mathrm{T} \bm{D} \right) \Delta \bm{x}_k = \bm{g}.
 \end{equation}
 
-可以看到，增量方程相比于高斯牛顿法，多了一项$\lambda \bm{D}^T \bm{D}$。如果考虑它的简化形式，即$\bm{D}=\bm{I}$，那么相当于求解\footnote{以及一些附加条件，例如KKT条件要求$\lambda>0$，且$\lambda(\|\bm{D} \Delta\bm{x}\|^2-\mu)=0$。}：
+可以看到，增量方程相比于高斯牛顿法，多了一项$\lambda \bm{D}^T \bm{D}$。如果考虑它的简化形式，即$\bm{D}=\bm{I}$，那么相当于求解\footnote{严谨的读者可能不满意此处的叙述。信赖域原问题的约束条件除了拉格朗日函数求导为零以外，KKT条件还会有一些别的约束：$\lambda>0$，且$\lambda(\|\bm{D} \Delta\bm{x}\|^2-\mu)=0$。但是在L-M迭代中，我们不妨把它看成在原问题的目标函数上，以$\lambda$为权重的惩罚项。在每一步迭代后，若发现信赖域条件不满足，或者目标函数增加，就增加$\lambda$的权重，直到最终满足信赖域条件。所以，理论上对L-M算法存在不同的解释，但实际当中我们只关心它是否顺利工作。}：
 \begin{displaymath}
 \left( \bm{H} +\lambda \bm{I} \right) \Delta \bm{x}_k = \bm{g}.
 \end{displaymath}
@@ -371,21 +371,118 @@ e_i = y_i - \exp \left( {ax_i^2 + bx_i + c} \right),
 \end{equation}
 于是$\bm{J}_i = \left[\frac{{\partial {e_i}}}{{\partial a}},\frac{{\partial {e_i}}}{{\partial b}},\frac{{\partial {e_i}}}{{\partial c}} \right]^\mathrm{T}$，高斯牛顿法的增量方程为：
 \begin{equation}
-\left(\sum\limits_{i = 1}^{100} {\bm{J}_i{(\sigma^2)^{ - 1}}{\bm{J}_i}}^\mathrm{T} \right) \Delta \bm{x}_k = \sum\limits_{i = 1}^{100} { - {\bm{J}_i}{\sigma ^{ - 1}}{e_i}},
+\left(\sum\limits_{i = 1}^{100} {\bm{J}_i{(\sigma^2)^{ - 1}}{\bm{J}_i}}^\mathrm{T} \right) \Delta \bm{x}_k = \sum\limits_{i = 1}^{100} { - {\bm{J}_i}{(\sigma^2)^{ - 1}}{e_i}},
 \end{equation}
 当然我们也可以选择把所有的$\bm{J}_i$排成一列，将这个方程写成矩阵形式，不过它的含义与求和形式是一致的。下面的代码演示了这个过程是如何进行的。
+\begin{lstlisting}[language=sh,caption=slambook2/ch6/gaussNewton.cpp]
+#include <iostream>
+#include <opencv2/opencv.hpp>
+#include <Eigen/Core>
+#include <Eigen/Dense>
 
+using namespace std;
+using namespace Eigen;
 
+int main(int argc, char **argv) {
+    double ar = 1.0, br = 2.0, cr = 1.0;         // 真实参数值
+    double ae = 2.0, be = -1.0, ce = 5.0;        // 估计参数值
+    int N = 100;                                 // 数据点
+    double w_sigma = 1.0;                        // 噪声Sigma值
+    double inv_sigma = 1.0 / w_sigma;
+    cv::RNG rng;                                 // OpenCV随机数产生器
+    
+    vector<double> x_data, y_data;      // 数据
+    for (int i = 0; i < N; i++) {
+        double x = i / 100.0;
+        x_data.push_back(x);
+        y_data.push_back(exp(ar * x * x + br * x + cr) + rng.gaussian(w_sigma * w_sigma));
+    }
+    
+    // 开始Gauss-Newton迭代
+    int iterations = 100;    // 迭代次数
+    double cost = 0, lastCost = 0;  // 本次迭代的cost和上一次迭代的cost
+    
+    chrono::steady_clock::time_point t1 = chrono::steady_clock::now();
+    for (int iter = 0; iter < iterations; iter++) {
+        
+        Matrix3d H = Matrix3d::Zero();             // Hessian = J^T W^{-1} J in Gauss-Newton
+        Vector3d b = Vector3d::Zero();             // bias
+        cost = 0;
+        
+        for (int i = 0; i < N; i++) {
+            double xi = x_data[i], yi = y_data[i];  // 第i个数据点
+            double error = yi - exp(ae * xi * xi + be * xi + ce);
+            Vector3d J; // 雅可比矩阵
+            J[0] = -xi * xi * exp(ae * xi * xi + be * xi + ce);  // de/da
+            J[1] = -xi * exp(ae * xi * xi + be * xi + ce);  // de/db
+            J[2] = -exp(ae * xi * xi + be * xi + ce);  // de/dc
+            
+            H += inv_sigma * inv_sigma * J * J.transpose();
+            b += -inv_sigma * inv_sigma * error * J;
+            
+            cost += error * error;
+        }
+        
+        // 求解线性方程 Hx=b
+        Vector3d dx = H.ldlt().solve(b);
+        if (isnan(dx[0])) {
+            cout << "result is nan!" << endl;
+            break;
+        }
+        
+        if (iter > 0 && cost >= lastCost) {
+            cout << "cost: " << cost << ">= last cost: " << lastCost << ", break." << endl;
+            break;
+        }
+        
+        ae += dx[0];
+        be += dx[1];
+        ce += dx[2];
+        
+        lastCost = cost;
+        
+        cout << "total cost: " << cost << ", \t\tupdate: " << dx.transpose() <<
+          "\t\testimated params: " << ae << "," << be << "," << ce << endl;
+    }
+    
+    chrono::steady_clock::time_point t2 = chrono::steady_clock::now();
+    chrono::duration<double> time_used = chrono::duration_cast<chrono::duration<double>>(t2 - t1);
+    cout << "solve time cost = " << time_used.count() << " seconds. " << endl;
+    cout << "estimated abc = " << ae << ", " << be << ", " << ce << endl;
+    return 0;
+}
+\end{lstlisting}
 
+在这个例子中，我们演示了如何对一个简单的拟合问题进行迭代优化。通过自己手写的代码，很容易看清楚整个优化的流程。该程序输出每一步迭代的目标函数值和更新量，如下：
+\begin{lstlisting}[language=sh,caption=终端输出：]
+/home/xiang/Code/slambook2/ch6/cmake-build-debug/gaussNewton
+total cost: 3.19575e+06, 		update: 0.0455771  0.078164 -0.985329		estimated params: 2.04558,-0.921836,4.01467
+total cost: 376785, 		update:  0.065762  0.224972 -0.962521		estimated params: 2.11134,-0.696864,3.05215
+total cost: 35673.6, 		update: -0.0670241   0.617616  -0.907497		estimated params: 2.04432,-0.0792484,2.14465
+total cost: 2195.01, 		update: -0.522767   1.19192 -0.756452		estimated params: 1.52155,1.11267,1.3882
+total cost: 174.853, 		update: -0.537502  0.909933 -0.386395		estimated params: 0.984045,2.0226,1.00181
+total cost: 102.78, 		update: -0.0919666   0.147331 -0.0573675		estimated params: 0.892079,2.16994,0.944438
+total cost: 101.937, 		update: -0.00117081  0.00196749 -0.00081055		estimated params: 0.890908,2.1719,0.943628
+total cost: 101.937, 		update:   3.4312e-06 -4.28555e-06  1.08348e-06		estimated params: 0.890912,2.1719,0.943629
+total cost: 101.937, 		update: -2.01204e-08  2.68928e-08 -7.86602e-09		estimated params: 0.890912,2.1719,0.943629
+cost: 101.937>= last cost: 101.937, break.
+solve time cost = 0.000212903 seconds.
+estimated abc = 0.890912, 2.1719, 0.943629
+\end{lstlisting}
+易见整个问题的目标函数在迭代9次之后趋近收敛，更新量趋近于零。最终估计的值与真值接近，函数图像如\autoref{fig:ceres-fitting}所示。在我的机器上（我的CPU是i7-8700），优化用时约0.2个毫秒。下面我们尝试使用优化库来完成同样的任务。
 
-% TODO 非线性优化
-
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.8\textwidth]{optimization/ceresFitting.pdf}
+    \caption{噪声$\sigma=1$时的曲线拟合结果。真实模型和估计模型非常接近。}
+    \label{fig:ceres-fitting}
+\end{figure}
 
 \subsection{使用Ceres进行曲线拟合}
-在手写高斯牛顿法之后，我们再来看如何使用优化库来完成此事。本节主要向大家介绍两个C++的优化库：来自谷歌的Ceres库\textsuperscript{\cite{Ceres}}以及基于图优化的g2o库\textsuperscript{\cite{Kummerle2011}}。由于g2o的使用还需要介绍一点图优化的相关知识，所以我们先来介绍Ceres，然后介绍一些图优化理论，最后来讲g2o。由于优化算法在之后的“视觉里程计”和“后端”中都会出现，所以请读者务必掌握优化算法的意义，理解程序的内容。
+本节向大家介绍两个C++的优化库：来自谷歌的Ceres库\textsuperscript{\cite{Ceres}}以及基于图优化的g2o库\textsuperscript{\cite{Kummerle2011}}。由于g2o的使用还需要介绍一点图优化的相关知识，所以我们先来介绍Ceres，然后介绍一些图优化理论，最后来讲g2o。由于优化算法在之后的“视觉里程计”和“后端”中都会出现，所以请读者务必掌握优化算法的意义，理解程序的内容。
 
 \subsubsection{Ceres简介}
-Ceres库面向通用的最小二乘问题的求解，作为用户，我们需要做的就是定义优化问题，然后设置一些选项，输入进Ceres求解即可。Ceres求解的最小二乘问题最一般的形式如下（带边界的核函数最小二乘）：
+Google Ceres是一个广泛使用的最小二乘问题求解库。在Ceres中，我们作为用户，只需按照一定步骤定义待解的优化问题，然后交给求解器计算即可。Ceres求解的最小二乘问题最一般的形式如下（带边界的核函数最小二乘）：
 \begin{equation}
 \begin{array}{ll}
 \min \limits_x \quad & \frac{1}{2}\sum\limits_i {{\rho _i}\left( {{{\left\| {{f_i}\left( {{x_{{i_1}}}, \cdots {x_{{i_n}}}} \right)} \right\|}^2}} \right)} \\
@@ -393,24 +490,31 @@ Ceres库面向通用的最小二乘问题的求解，作为用户，我们需要
 \end{array}
 \end{equation}
 
-可以看到，目标函数由许多平方项经过一个\textbf{核函数}$\rho(\cdot)$之后求和组成\footnote{核函数的详细讨论见第9讲。}。在最简单的情况下，取$\rho$为恒等函数，则目标函数即为许多项的平方和。在这个问题中，优化变量为$x_1, \cdots, x_n$，$f_i$称为\textbf{代价函数}（Cost function），在SLAM中亦可理解为误差项。$l_j$和$u_j$为第$j$个优化变量的上限和下限。在最简单的情况下，取$l_j = -\infty, u_j=\infty$（不限制优化变量的边界），并且取$\rho$为恒等函数时，就得到了无约束的最小二乘问题，和我们先前说的是一致的。
+在这个问题中，$x_1, \cdots, x_n$为优化变量，又称\textbf{参数块}（Parameter blocks），$f_i$称为\textbf{代价函数}（Cost function），也称为残差块（Residual blocks），在SLAM中亦可理解为误差项。$l_j$和$u_j$为第$j$个优化变量的上限和下限。在最简单的情况下，取$l_j = -\infty, u_j=\infty$（不限制优化变量的边界）。此时，目标函数由许多平方项经过一个\textbf{核函数}$\rho(\cdot)$之后求和组成\footnote{核函数的详细讨论见第9讲。}。同样，可以取$\rho$为恒等函数，那么目标函数即为许多项的平方和，我们就得到了无约束的最小二乘问题，和先前介绍的理论是一致的。
 
-在Ceres中，我们将定义优化变量$\bm{x}$和每个代价函数$f_i$，再调用Ceres进行求解。我们可以选择使用高斯牛顿法或者列文伯格—马夸尔特方法进行梯度下降，并设定梯度下降的条件，Ceres会在优化之后将最优估计值返回。下面，我们通过一个曲线拟合的实验来实际操作一下Ceres，理解优化的过程。
+为了让Ceres帮我们求解这个问题，我们需要做以下几件事：
+\begin{enumerate}
+\item 定义每个参数块。参数块通常为平凡的向量，但是在SLAM里也可以定义成四元数、李代数这种特殊的结构。如果是向量，那么我们需要为每个参数块分配一个double数组，来存储变量的值。
+\item 然后，定义残差块的计算方式。残差块通常关联若干个参数块，对它们进行一些自定义的计算，然后返回残差值。Ceres对它们求平方和之后，作为目标函数的值。
+\item 残差块往往也需要定义雅可比的计算方式。在Ceres中，你可以使用它提供的“自动求导”功能，也可以手动指定雅可比的计算过程。如果要使用自动求导，那么残差块需要按照特定的写法来书写：残差的计算过程应该是一个带模板的括号运算符。这一点我们通过例子来说明。
+\item 最后，把所有的参数块和残差块加入Ceres定义的Problem对象中，调用Solve函数求解即可。求解之前，我们可以传入一些配置信息，例如迭代次数、终止条件等，也可以使用默认的配置。
+\end{enumerate}
+下面，我们来实际操作一下Ceres求解曲线拟合问题，理解优化的过程。
 
-\subsection{安装Ceres}
-为了使用Ceres，首先需要进行编译安装！建议去GitHub上下载Ceres：\url{https://github.com/ceres-solver/ceres-solver}。本书资源的3rdparty下也附带了Ceres库。
+\subsubsection{安装Ceres}
+为了使用Ceres，我们需要对它进行编译安装。Ceres的github地址为：\url{https://github.com/ceres-solver/ceres-solver}，不过你也可以直接使用本书代码3rdparty目录里的Ceres，这样你将和我使用完全一样的版本。
 
 与之前碰到的库一样，Ceres是一个cmake工程。先来安装它的依赖项，在Ubuntu中可以用apt-get安装，主要是谷歌自己使用的一些日志和测试工具：
-
-\begin{lstlisting}[language=sh]
-sudo apt-get install liblapack-dev libsuitesparse-dev libcxsparse3.1.2 libgflags-dev libgoogle-glog-dev libgtest-dev 
+\begin{lstlisting}[language=sh,caption=终端输入：]
+sudo apt-get install liblapack-dev libsuitesparse-dev libcxsparse3 libgflags-dev libgoogle-glog-dev libgtest-dev 
 \end{lstlisting}
 
 然后，进入Ceres库目录下，使用cmake编译并安装它。这个过程我们已经做过很多遍了，此处不再赘述。安装完成后，在/usr/local/include/ceres下找到Ceres的头文件，并在/usr/local/lib/下找到名为libceres.a的库文件。有了这些文件，就可以使用Ceres进行优化计算了。
 
-\subsection{使用Ceres拟合曲线}
+\subsubsection{使用Ceres拟合曲线}
+下面的代码演示了如何使用Ceres求解同样的问题。
 
-\begin{lstlisting}[language=c++,caption=slambook/ch6/ceres_curve_fitting/main.cpp]
+\begin{lstlisting}[language=c++,caption=slambook/ch6/ceresCurveFitting.cpp]
 #include <iostream>
 #include <opencv2/core/core.hpp>
 #include <ceres/ceres.h>
@@ -419,139 +523,110 @@ sudo apt-get install liblapack-dev libsuitesparse-dev libcxsparse3.1.2 libgflags
 using namespace std;
 
 // 代价函数的计算模型
-struct CURVE_FITTING_COST
-{
-	CURVE_FITTING_COST ( double x, double y ) : _x ( x ), _y ( y ) {}
-	// 残差的计算
-	template <typename T>
-	bool operator() (
-		const T* const abc,     // 模型参数，有 3 维
-		T* residual ) const     // 残差	
-	{
-		// y-exp(ax^2+bx+c)
-		residual[0] = T ( _y ) - ceres::exp ( abc[0]*T ( _x ) *T ( _x ) + abc[1]*T ( _x ) + abc[2] ); 
-		return true;
-	}
-	const double _x, _y;    // x,y 数据
+struct CURVE_FITTING_COST {
+    CURVE_FITTING_COST(double x, double y) : _x(x), _y(y) {}
+    
+    // 残差的计算
+    template<typename T>
+    bool operator()(
+        const T *const abc, // 模型参数，有3维
+        T *residual) const {
+        // y-exp(ax^2+bx+c)
+        residual[0] = T(_y) - ceres::exp(abc[0] * T(_x) * T(_x) + abc[1] * T(_x) + abc[2]);
+        return true;
+    }
+    
+    const double _x, _y;    // x,y数据
 };
 
-int main ( int argc, char** argv )
-{
-	double a=1.0, b=2.0, c=1.0;         // 真实参数值
-	int N=100;                          // 数据点
-	double w_sigma=1.0;                 // 噪声 Sigma 值
-	cv::RNG rng;                        // OpenCV 随机数产生器
-	double abc[3] = {0,0,0};            // abc 参数的估计值
-
-	vector<double> x_data, y_data;      // 数据
-
-	cout<<"generating data: "<<endl;
-	for ( int i=0; i<N; i++ )
-	{
-		double x = i/100.0;
-		x_data.push_back ( x );
-		y_data.push_back (
-			exp ( a*x*x + b*x + c ) + rng.gaussian ( w_sigma )
-		);
-		cout<<x_data[i]<<" "<<y_data[i]<<endl;
-	}
-
-	// 构建最小二乘问题
-	ceres::Problem problem;
-	for ( int i=0; i<N; i++ )
-	{
-		problem.AddResidualBlock (     // 向问题中添加误差项
-			// 使用自动求导，模板参数：误差类型，输出维度，输入维度，数值参照前面 struct 中写法
-			new ceres::AutoDiffCostFunction<CURVE_FITTING_COST, 1, 3> ( 
-				new CURVE_FITTING_COST ( x_data[i], y_data[i] )
-			),
-			nullptr,            // 核函数，这里不使用，为空
-			abc                 // 待估计参数
-		);
-	}
-
-	// 配置求解器
-	ceres::Solver::Options options;     // 这里有很多配置项可以填
-	options.linear_solver_type = ceres::DENSE_QR;  // 增量方程如何求解
-	options.minimizer_progress_to_stdout = true;   // 输出到cout
-
-	ceres::Solver::Summary summary;                // 优化信息
-	chrono::steady_clock::time_point t1 = chrono::steady_clock::now();
-	ceres::Solve ( options, &problem, &summary );  // 开始优化
-	chrono::steady_clock::time_point t2 = chrono::steady_clock::now();
-	chrono::duration<double> time_used = chrono::duration_cast<chrono::duration<double>>( t2-t1 );
-	cout<<"solve time cost = "<<time_used.count()<<" seconds. "<<endl;
-
-	// 输出结果
-	cout<<summary.BriefReport() <<endl;
-	cout<<"estimated a,b,c = ";
-	for ( auto a:abc ) cout<<a<<" ";
-	cout<<endl;
-
-	return 0;
+int main(int argc, char **argv) {
+    double ar = 1.0, br = 2.0, cr = 1.0;         // 真实参数值
+    double ae = 2.0, be = -1.0, ce = 5.0;        // 估计参数值
+    int N = 100;                                 // 数据点
+    double w_sigma = 1.0;                        // 噪声Sigma值
+    double inv_sigma = 1.0 / w_sigma;
+    cv::RNG rng;                                 // OpenCV随机数产生器
+    
+    vector<double> x_data, y_data;      // 数据
+    for (int i = 0; i < N; i++) {
+        double x = i / 100.0;
+        x_data.push_back(x);
+        y_data.push_back(exp(ar * x * x + br * x + cr) + rng.gaussian(w_sigma * w_sigma));
+    }
+    
+    double abc[3] = {ae, be, ce};
+    
+    // 构建最小二乘问题
+    ceres::Problem problem;
+    for (int i = 0; i < N; i++) {
+        problem.AddResidualBlock(     // 向问题中添加误差项
+            // 使用自动求导，模板参数：误差类型，输出维度，输入维度，维数要与前面struct中一致
+            new ceres::AutoDiffCostFunction<CURVE_FITTING_COST, 1, 3>(
+                new CURVE_FITTING_COST(x_data[i], y_data[i])
+            ),
+            nullptr,            // 核函数，这里不使用，为空
+            abc                 // 待估计参数
+        );
+    }
+    
+    // 配置求解器
+    ceres::Solver::Options options;     // 这里有很多配置项可以填
+    options.linear_solver_type = ceres::DENSE_NORMAL_CHOLESKY;  // 增量方程如何求解
+    options.minimizer_progress_to_stdout = true;   // 输出到cout
+    
+    ceres::Solver::Summary summary;                // 优化信息
+    chrono::steady_clock::time_point t1 = chrono::steady_clock::now();
+    ceres::Solve(options, &problem, &summary);  // 开始优化
+    chrono::steady_clock::time_point t2 = chrono::steady_clock::now();
+    chrono::duration<double> time_used = chrono::duration_cast<chrono::duration<double>>(t2 - t1);
+    cout << "solve time cost = " << time_used.count() << " seconds. " << endl;
+    
+    // 输出结果
+    cout << summary.BriefReport() << endl;
+    cout << "estimated a,b,c = ";
+    for (auto a:abc) cout << a << " ";
+    cout << endl;
+    
+    return 0;
 }
 \end{lstlisting}
 
-程序中需要说明的地方均已加注释。可以看到，我们利用OpenCV的噪声生成器生成了100个带高斯噪声的数据，随后利用Ceres进行拟合。Ceres的用法如下：
+程序中需要说明的地方均已加注释。可以看到，我们利用OpenCV的噪声生成器生成了100个带高斯噪声的数据，随后利用Ceres进行拟合。这里演示的Ceres用法有如下几项：
 
 \begin{enumerate}
-	\item 定义Cost Function模型。方法是书写一个类，并在类中定义带模板参数的()运算符，这样该类就成为了一个拟函数（Functor，C++术语）。这种定义方式使得Ceres可以像调用函数一样，对该类的某个对象（比如a）调用a<double>()方法——这使对象具有像函数那样的行为。
-	\item 调用AddResidualBlock将误差项添加到目标函数中。由于优化需要梯度，我们有若干种选择：（1）使用Ceres的自动求导（Auto Diff）；（2）使用数值求导（Numeric Diff）；（3）自行推导解析的导数形式，提供给Ceres。其中自动求导在编码上是最方便的，于是我们使用自动求导。
-	\item 自动求导需要指定误差项和优化变量的维度。这里的误差是标量，维度为1；优化的是$a,b,c$三个量，维度为3。于是，在自动求导类的模板参数中设定变量维度为1、3。
-	\item 设定好问题后，调用solve函数进行求解。你可以在options里配置（非常详细的）优化选项。例如，可以选择使用Line Search还是Trust Region、迭代次数、步长，等等。读者可以查看Options的定义，看看有哪些优化方法可选，当然默认的配置已经可用于很广泛的问题了。
+	\item 定义残差块的类。方法是书写一个类（或结构体），并在类中定义带模板参数的()运算符，这样该类就成为了一个\textbf{拟函数}（Functor）\footnote{C++术语，因为带有括号运算符的类在使用括号算符时，就仿佛是一个函数一样。}。这种定义方式使得Ceres可以像调用函数一样，对该类的某个对象（比如a）调用a<double>()方法。事实上，Ceres会把雅可比矩阵作为类型参数传入此函数，从而实现自动求导的功能。
+	\item 程序中的double abc[3]即为参数块，而对于残差块，我们对每一个数据构造CURVE\_FITTING\_COST对象，然后调用AddResidualBlock将误差项添加到目标函数中。由于优化需要梯度，我们有若干种选择：（1）使用Ceres的自动求导（Auto Diff）；（2）使用数值求导（Numeric Diff）\footnote{自动求导也是用数值导数实现的，但由于是模板运算，所以运行更快一些。}；（3）自行推导解析的导数形式，提供给Ceres。因为自动求导在编码上是最方便的，于是我们使用自动求导。
+	\item 自动求导需要指定误差项和优化变量的维度。这里的误差是标量，维度为1；优化的是$a,b,c$三个量，维度为3。于是，在自动求导类AutoDiffCostFunction的模板参数中设定变量维度为1、3。
+	\item 设定好问题后，调用Solve函数进行求解。你可以在options里配置（非常详细的）优化选项。例如，可以选择使用Line Search还是Trust Region、迭代次数、步长，等等。读者可以查看Options的定义，看看有哪些优化方法可选，当然默认的配置已经可用于很广泛的问题了。
 \end{enumerate}
 
-最后，我们来看看实验结果。调用build/curve\_fitting查看优化结果：
+最后，我们来看看实验结果。调用build/ceresCurveFitting查看优化结果：
 \begin{lstlisting}
-% build/curve_fitting 
-generating data: 
-0 2.71828
-0.01 2.93161
-0.02 2.12942
-0.03 2.46037
-......
-iter         cost cost_change |gradient|    |step|   tr_ratio tr_radius ls_iter iter_time total_time
-0    1.824887e+04    0.00e+00   1.38e+03  0.00e+00   0.00e+00  1.00e+04       0  4.09e-05   1.48e-04
-1    2.748700e+39   -2.75e+39   0.00e+00  7.67e+01  -1.52e+35  5.00e+03       1  1.09e-04   3.13e-04
-2    2.429783e+39   -2.43e+39   0.00e+00  7.62e+01  -1.35e+35  1.25e+03       1  3.57e-05   3.75e-04
-......
-18   5.310764e+01    3.42e+00   8.50e+00  2.81e-01   9.89e-01  2.53e+03       1  3.09e-05   1.15e-03
-19   5.125939e+01    1.85e+00   2.84e+00  2.98e-01   9.90e-01  7.60e+03       1  2.85e-05   1.19e-03
-20   5.097693e+01    2.82e-01   4.34e-01  1.48e-01   9.95e-01  2.28e+04       1  2.82e-05   1.23e-03
-21   5.096854e+01    8.39e-03   3.24e-02  2.87e-02   9.96e-01  6.84e+04       1  3.04e-05   1.27e-03
-solve time cost = 0.00133349 seconds. 
-Ceres Solver Report: Iterations: 22, Initial cost: 1.824887e+04, Final cost: 5.096854e+01, Termination: CONVERGENCE
-estimated a,b,c = 0.891943 2.17039 0.944142
+iter      cost      cost_change  |gradient|   |step|    tr_ratio  tr_radius  ls_iter  iter_time  total_time
+0  1.597873e+06    0.00e+00    3.52e+06   0.00e+00   0.00e+00  1.00e+04        0    2.10e-05    7.92e-05
+1  1.884440e+05    1.41e+06    4.86e+05   9.88e-01   8.82e-01  1.81e+04        1    5.60e-05    1.05e-03
+2  1.784821e+04    1.71e+05    6.78e+04   9.89e-01   9.06e-01  3.87e+04        1    2.00e-05    1.09e-03
+3  1.099631e+03    1.67e+04    8.58e+03   1.10e+00   9.41e-01  1.16e+05        1    6.70e-05    1.16e-03
+4  8.784938e+01    1.01e+03    6.53e+02   1.51e+00   9.67e-01  3.48e+05        1    1.88e-05    1.19e-03
+5  5.141230e+01    3.64e+01    2.72e+01   1.13e+00   9.90e-01  1.05e+06        1    1.81e-05    1.22e-03
+6  5.096862e+01    4.44e-01    4.27e-01   1.89e-01   9.98e-01  3.14e+06        1    1.79e-05    1.25e-03
+7  5.096851e+01    1.10e-04    9.53e-04   2.84e-03   9.99e-01  9.41e+06        1    1.81e-05    1.28e-03
+solve time cost = 0.00130755 seconds. 
+Ceres Solver Report: Iterations: 8, Initial cost: 1.597873e+06, Final cost: 5.096851e+01, Termination: CONVERGENCE
+estimated a,b,c = 0.890908 2.1719 0.943628 
 \end{lstlisting}
 
-从Ceres给出的优化过程可以看到，整体误差大约从18248下降到了50.9，并且梯度也是越来越小。在迭代22次后算法收敛，最后的估计值为
-\[
-a=0.891943,\quad b=2.17039,\quad c=0.944142.
-\]
-而我们设定的真值为
-\[
-a=1,\quad b=2,\quad c=1.
-\]
-它们相差不多。
+最终的优化值和我们上一节的实验结果基本相同，但运行速度上Ceres要相对慢一些。在我的机器上Ceres约使用了1.3个毫秒，这比手写高斯牛顿法慢了约六倍左右。
 
-为了更直观地显示数据，可以把它画出来，如\autoref{fig:ceres-fitting}所示。其中显示了带噪声的数据、真实模型和估计模型，可以看到估计模型和真实模型非常接近，几乎重合。我们同时记录了Ceres的运行时间，对这样一个100个点的优化问题，计算时间约1.3ms（虚拟机上）。
+希望读者通过这个简单的例子对Ceres的使用方法有一个大致了解。它的优点是提供了自动求导工具，使得不必去计算很麻烦的雅可比矩阵。Ceres的自动求导是通过模板元实现的，在编译时期就可以完成自动求导工作，不过仍然是数值导数。本书大部分时候仍然会介绍雅可比矩阵的计算，因为那样对理解问题更有帮助，而且在优化中更少出现问题。此外，Ceres的优化过程配置也很丰富，使其适合很广泛的最小二乘优化问题，包括SLAM之外的各种问题。
 
-\begin{figure}[!ht]
-	\centering
-	\includegraphics[width=0.8\textwidth]{Optimization/ceresFitting.pdf}
-	\caption{使用Ceres进行曲线拟合。真实模型和估计模型非常接近。}
-	\label{fig:ceres-fitting}
-\end{figure}
-
-希望读者通过这个简单的例子对Ceres的使用方法有一个大致了解。它的优点是提供了自动求导工具，使得不必去计算很麻烦的雅可比矩阵。Ceres的自动求导是通过模板元实现的，在编译时期就可以完成自动求导工作，不过仍然是数值导数。本书大部分时候仍然会介绍雅可比矩阵的计算，因为那样对理解问题更有帮助，而且在优化中更少出现问题。此外，Ceres的优化过程配置也很丰富，使其适合很广泛的最小二乘优化问题，包括SLAM中的各种问题。
-
-\section{实践：g2o}
+\subsection{使用g2o进行曲线拟合}
 本讲的第2个实践部分将介绍另一个（主要在SLAM领域）广为使用的优化库：g2o（General Graphic Optimization，G$^2$O）。它是一个基于\textbf{图优化}的库。图优化是一种将非线性优化与图论结合起来的理论，因此在使用它之前，我们花一点篇幅介绍一下图优化理论。
 
-\subsection{图优化理论简介}
+\subsubsection{图优化理论简介}
 我们已经介绍了非线性最小二乘的求解方式。它们是由很多个误差项之和组成的。然而，仅有一组优化变量和许多个误差项，我们并不清楚它们之间的\textbf{关联}。比如，某个优化变量$x_j$存在于多少个误差项中呢？我们能保证对它的优化是有意义的吗？进一步，我们希望能够直观地看到该优化问题\textbf{长什么样}。于是，就牵涉到了图优化。
 
-图优化，是把优化问题表现成\textbf{图（Graph）}的一种方式。这里的\textbf{图}是图论意义上的图。一个图由若干个\textbf{顶点（Vertex）}，以及连接着这些顶点的\textbf{边（Edge）}组成。进而，用\textbf{顶点}表示\textbf{优化变量}，用\textbf{边}表示\textbf{误差项}。于是，对任意一个上述形式的非线性最小二乘问题，我们可以构建与之对应的一个\textbf{图}。
+图优化，是把优化问题表现成\textbf{图（Graph）}的一种方式。这里的\textbf{图}是图论意义上的图。一个图由若干个\textbf{顶点（Vertex）}，以及连接着这些顶点的\textbf{边（Edge）}组成。进而，用\textbf{顶点}表示\textbf{优化变量}，用\textbf{边}表示\textbf{误差项}。于是，对任意一个上述形式的非线性最小二乘问题，我们可以构建与之对应的一个\textbf{图}。我们可以简单地称它为\textbf{图}，也可以用概率图里的定义，称之为\textbf{贝叶斯图}或\textbf{因子图}。
 
 \autoref{fig:graph-optimization}~是一个简单的图优化例子。我们用三角形表示相机位姿节点，用圆形表示路标点，它们构成了图优化的顶点；同时，实线表示相机的运动模型，虚线表示观测模型，它们构成了图优化的边。此时，虽然整个问题的数学形式仍是式\eqref{eq:least-square}那样，但现在我们可以直观地看到问题的\textbf{结构}了。如果希望，也可以做\textbf{去掉孤立顶点}或\textbf{优先优化边数较多（或按图论的术语，度数较大）的顶点}这样的改进。但是最基本的图优化是用图模型来表达一个非线性最小二乘的优化问题。而我们可以利用图模型的某些性质做更好的优化。
 
@@ -562,20 +637,17 @@ a=1,\quad b=2,\quad c=1.
 	\label{fig:graph-optimization}
 \end{figure}
 
-g2o为SLAM提供了图优化所需的内容。下面演示一下g2o的使用方法。
+g2o是一个通用的图优化库。“通用”意味着你可以在g2o里求解任何能够表示为图优化的最小二乘问题，显然包括上面谈的曲线拟合问题。下面我们来演示这个过程。
 
 \subsection{g2o的编译与安装}
-在使用一个库之前，我们需要对它进行编译和安装。读者应该已经体验过很多次这种过程了，它们基本大同小异。关于g2o，读者可以从GitHub下载它：\url{https://github.com/RainerKuemmerle/g2o}，或从本书提供的第三方代码库中获得。
+在使用一个库之前，我们需要对它进行编译和安装。读者应该已经体验过很多次这种过程了，它们基本大同小异。关于g2o，读者可以从GitHub下载它：\url{https://github.com/RainerKuemmerle/g2o}，或从本书提供的第三方代码库中获得。由于g2o还在继续更新，所以我建议你使用3rdparty下的g2o以保证版本与我的相同。
 
-解压代码包后，你会看到g2o库的所有源码，它也是一个cmake工程。我们先来安装它的依赖项（部分依赖项与Ceres重合）：
-
-\begin{lstlisting}[language=sh]
-sudo apt-get install libqt4-dev qt4-qmake libqglviewer-dev libsuitesparse-dev libcxsparse3.1.2 libcholmod-dev
+g2o也是一个cmake工程。我们先来安装它的依赖项（部分依赖项与Ceres重合）：
+\begin{lstlisting}[language=sh,caption=终端输入：]
+sudo apt-get install qt5-qmake qt5-default libqglviewer-dev-qt5 libsuitesparse-dev libcxsparse3 libcholmod3
 \end{lstlisting}
 
 然后，按照cmake的方式对g2o进行编译安装即可，这里略去对该过程的说明。安装完成后，g2o的头文件将位于/usr/local/g2o下，库文件位于/usr/local/lib/下。现在，我们重新考虑Ceres例程中的曲线拟合实验，在g2o中实验一遍。
-
-\clearpage
 
 \subsection{使用g2o拟合曲线}
 为了使用g2o，首先要将曲线拟合问题抽象成图优化。这个过程中，只要记住\textbf{节点为优化变量，边为误差项}即可。曲线拟合的图优化问题可以画成\autoref{fig:graph-fitting}~的形式。
@@ -587,7 +659,7 @@ sudo apt-get install libqt4-dev qt4-qmake libqglviewer-dev libsuitesparse-dev li
 	\label{fig:graph-fitting}
 \end{figure}
 
-在曲线拟合问题中，整个问题只有一个顶点：曲线模型的参数$a,b,c$；而各个带噪声的数据点，构成了一个个误差项，也就是图优化的边。但这里的边与我们平时想的边不太一样，它们是\textbf{一元边}（Unary Edge），即\textbf{只连接一个顶点}——因为整个图只有一个顶点。所以在\autoref{fig:graph-fitting}~中，我们只能把它画成自己连到自己的样子。事实上，图优化中一条边可以连接一个、两个或多个顶点，这主要反映每个误差与多少个优化变量有关。在稍有些玄妙的说法中，我们把它叫作\textbf{超边}（Hyper Edge），整个图叫作\textbf{超图}（Hyper Graph）\footnote{虽然笔者个人并不太喜欢有些故弄玄虚的说法。}。
+在曲线拟合问题中，整个问题只有一个顶点：曲线模型的参数$a,b,c$；而各个带噪声的数据点，构成了一个个误差项，也就是图优化的边。但这里的边与我们平时想的边不太一样，它们是\textbf{一元边}（Unary Edge），即\textbf{只连接一个顶点}——因为整个图只有一个顶点。所以在\autoref{fig:graph-fitting}~中，我们只能把它画成自己连到自己的样子。事实上，图优化中一条边可以连接一个、两个或多个顶点，这主要反映每个误差与多少个优化变量有关。在稍有些玄妙的说法中，我们把它叫作\textbf{超边}（Hyper Edge），整个图叫作\textbf{超图}（Hyper Graph）\footnote{显然我个人并不太喜欢有些故弄玄虚的说法，我是个自然主义者。}。
 
 弄清了这个图模型之后，接下来就是在g2o中建立该模型进行优化了。作为g2o的用户，我们要做的事主要包含以下步骤：
 
@@ -598,11 +670,11 @@ sudo apt-get install libqt4-dev qt4-qmake libqglviewer-dev libsuitesparse-dev li
 	\item 调用g2o进行优化，返回结果。
 \end{enumerate}
 
-下面演示一下程序。
+这部分和Ceres是非常相似的，当然程序在书写上会有一些不同。下面演示一下程序。
 
-\clearpage
-\begin{lstlisting}[language=c++,caption=slambook/ch6/g2o\_curve\_fitting/main.cpp]
+\begin{lstlisting}[language=c++,caption=slambook/ch6/g2oCurveFitting.cpp]
 #include <iostream>
+#include <g2o/core/g2o_core_api.h>
 #include <g2o/core/base_vertex.h>
 #include <g2o/core/base_unary_edge.h>
 #include <g2o/core/block_solver.h>
@@ -614,118 +686,106 @@ sudo apt-get install libqt4-dev qt4-qmake libqglviewer-dev libsuitesparse-dev li
 #include <opencv2/core/core.hpp>
 #include <cmath>
 #include <chrono>
-using namespace std; 
+
+using namespace std;
 
 // 曲线模型的顶点，模板参数：优化变量维度和数据类型
-class CurveFittingVertex: public g2o::BaseVertex<3, Eigen::Vector3d>
-{
+class CurveFittingVertex : public g2o::BaseVertex<3, Eigen::Vector3d> {
 public:
-	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-	virtual void setToOriginImpl() // 重置
-	{
-		_estimate << 0,0,0;
-	}
-
-	virtual void oplusImpl( const double* update ) // 更新
-	{
-		_estimate += Eigen::Vector3d(update);
-	}
-	// 存盘和读盘：留空
-	virtual bool read( istream& in ) {}
-	virtual bool write( ostream& out ) const {}
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    
+    // 重置
+    virtual void setToOriginImpl() override {
+        _estimate << 0, 0, 0;
+    }
+    
+    // 更新
+    virtual void oplusImpl(const double *update) override {
+        _estimate += Eigen::Vector3d(update);
+    }
+    
+    // 存盘和读盘：留空
+    virtual bool read(istream &in) {}
+    virtual bool write(ostream &out) const {}
 };
 
 // 误差模型 模板参数：观测值维度，类型，连接顶点类型
-class CurveFittingEdge: public g2o::BaseUnaryEdge<1,double,CurveFittingVertex>
-{
+class CurveFittingEdge : public g2o::BaseUnaryEdge<1, double, CurveFittingVertex> {
 public:
-	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-	CurveFittingEdge( double x ): BaseUnaryEdge(), _x(x) {}
-	// 计算曲线模型误差
-	void computeError()
-	{
-		const CurveFittingVertex* v = static_cast<const CurveFittingVertex*> (_vertices[0]);
-		const Eigen::Vector3d abc = v->estimate();
-		_error(0,0) = _measurement - std::exp( abc(0,0)*_x*_x + abc(1,0)*_x + abc(2,0) ) ;
-	}
-	virtual bool read( istream& in ) {}
-	virtual bool write( ostream& out ) const {}
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    
+    CurveFittingEdge(double x) : BaseUnaryEdge(), _x(x) {}
+    
+    // 计算曲线模型误差
+    virtual void computeError() override {
+        const CurveFittingVertex *v = static_cast<const CurveFittingVertex *> (_vertices[0]);
+        const Eigen::Vector3d abc = v->estimate();
+        _error(0, 0) = _measurement - std::exp(abc(0, 0) * _x * _x + abc(1, 0) * _x + abc(2, 0));
+    }
+    
+    // 计算雅可比矩阵
+    virtual void linearizeOplus() override {
+        const CurveFittingVertex *v = static_cast<const CurveFittingVertex *> (_vertices[0]);
+        const Eigen::Vector3d abc = v->estimate();
+        double y = exp(abc[0] * _x * _x + abc[1] * _x + abc[2]);
+        _jacobianOplusXi[0] = -_x * _x * y;
+        _jacobianOplusXi[1] = -_x * y;
+        _jacobianOplusXi[2] = -y;
+    }
+    
+    virtual bool read(istream &in) {}
+    virtual bool write(ostream &out) const {}
 public:
-	double _x;  // x 值， y 值为 _measurement
+    double _x;  // x 值， y 值为 _measurement
 };
 
-int main( int argc, char** argv )
-{
-	double a=1.0, b=2.0, c=1.0;         // 真实参数值
-	int N=100;                          // 数据点
-	double w_sigma=1.0;                 // 噪声Sigma值
-	cv::RNG rng;                        // OpenCV随机数产生器
-	double abc[3] = {0,0,0};            // abc参数的估计值
-
-	vector<double> x_data, y_data;      // 数据
-
-	cout<<"generating data: "<<endl;
-	for ( int i=0; i<N; i++ )
-	{
-		double x = i/100.0;
-		x_data.push_back ( x );
-		y_data.push_back (
-			exp ( a*x*x + b*x + c ) + rng.gaussian ( w_sigma )
-		);
-		cout<<x_data[i]<<" "<<y_data[i]<<endl;
-	}
-
-	// 构建图优化，先设定g2o
-	// 矩阵块：每个误差项优化变量维度为 3 ，误差值维度为 1
-	typedef g2o::BlockSolver< g2o::BlockSolverTraits<3,1> > Block; 
-	// 线性方程求解器：稠密的增量方程
-	Block::LinearSolverType* linearSolver = new g2o::LinearSolverDense<Block::PoseMatrixType>();
-	Block* solver_ptr = new Block( linearSolver );      // 矩阵块求解器
-	// 梯度下降方法，从GN, LM, DogLeg 中选
-	g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg( solver_ptr );
-	// 取消下面的注释以使用 GN 或 DogLeg 
-	// g2o::OptimizationAlgorithmGaussNewton* solver = new g2o::OptimizationAlgorithmGaussNewton( solver_ptr );
-	// g2o::OptimizationAlgorithmDogleg* solver = new g2o::OptimizationAlgorithmDogleg( solver_ptr );
-	g2o::SparseOptimizer optimizer;     // 图模型
-	optimizer.setAlgorithm( solver );   // 设置求解器
-	optimizer.setVerbose( true );       // 打开调试输出
-
-	// 向图中增加顶点
-	CurveFittingVertex* v = new CurveFittingVertex();
-	v->setEstimate( Eigen::Vector3d(0,0,0) );
-	v->setId(0);
-	optimizer.addVertex( v );
-
-	// 向图中增加边
-	for ( int i=0; i<N; i++ )
-	{
-		CurveFittingEdge* edge = new CurveFittingEdge( x_data[i] );
-		edge->setId(i);
-		edge->setVertex( 0, v );                // 设置连接的顶点
-		edge->setMeasurement( y_data[i] );      // 观测数值
-		// 信息矩阵：协方差矩阵之逆
-		edge->setInformation( Eigen::Matrix<double,1,1>::Identity()*1/(w_sigma*w_sigma) ); 
-		optimizer.addEdge( edge );
-	}
-
-	// 执行优化
-	cout<<"start optimization"<<endl;
-	chrono::steady_clock::time_point t1 = chrono::steady_clock::now();
-	optimizer.initializeOptimization();
-	optimizer.optimize(100);
-	chrono::steady_clock::time_point t2 = chrono::steady_clock::now();
-	chrono::duration<double> time_used = chrono::duration_cast<chrono::duration<double>>( t2-t1 );
-	cout<<"solve time cost = "<<time_used.count()<<" seconds. "<<endl;
-
-	// 输出优化值
-	Eigen::Vector3d abc_estimate = v->estimate();
-	cout<<"estimated model: "<<abc_estimate.transpose()<<endl;
-
-	return 0;
+int main(int argc, char **argv) {
+    // 省略数据生成部分代码
+    // 构建图优化，先设定g2o
+    typedef g2o::BlockSolver<g2o::BlockSolverTraits<3, 1>> BlockSolverType;  // 每个误差项优化变量维度为3，误差值维度为1
+    typedef g2o::LinearSolverDense<BlockSolverType::PoseMatrixType> LinearSolverType; // 线性求解器类型
+    
+    // 梯度下降方法，可以从GN, LM, DogLeg 中选
+    auto solver = new g2o::OptimizationAlgorithmGaussNewton(
+        g2o::make_unique<BlockSolverType>(g2o::make_unique<LinearSolverType>()));
+    g2o::SparseOptimizer optimizer;     // 图模型
+    optimizer.setAlgorithm(solver);   // 设置求解器
+    optimizer.setVerbose(true);       // 打开调试输出
+    
+    // 往图中增加顶点
+    CurveFittingVertex *v = new CurveFittingVertex();
+    v->setEstimate(Eigen::Vector3d(ae, be, ce));
+    v->setId(0);
+    optimizer.addVertex(v);
+    
+    // 往图中增加边
+    for (int i = 0; i < N; i++) {
+        CurveFittingEdge *edge = new CurveFittingEdge(x_data[i]);
+        edge->setId(i);
+        edge->setVertex(0, v);                // 设置连接的顶点
+        edge->setMeasurement(y_data[i]);      // 观测数值
+        edge->setInformation(Eigen::Matrix<double, 1, 1>::Identity() * 1 / (w_sigma * w_sigma)); // 信息矩阵：协方差矩阵之逆
+        optimizer.addEdge(edge);
+    }
+    
+    // 执行优化
+    cout << "start optimization" << endl;
+    chrono::steady_clock::time_point t1 = chrono::steady_clock::now();
+    optimizer.initializeOptimization();
+    optimizer.optimize(10);
+    chrono::steady_clock::time_point t2 = chrono::steady_clock::now();
+    chrono::duration<double> time_used = chrono::duration_cast<chrono::duration<double>>(t2 - t1);
+    cout << "solve time cost = " << time_used.count() << " seconds. " << endl;
+    
+    // 输出优化值
+    Eigen::Vector3d abc_estimate = v->estimate();
+    cout << "estimated model: " << abc_estimate.transpose() << endl;
+    
+    return 0;
 }
 \end{lstlisting}
 
-在这个程序中，我们从g2o派生出了用于曲线拟合的图优化顶点和边：CurveFittingVertex和CurveFittingEdge，这实质上扩展了g2o的使用方式。在这两个派生类中，我们重写了重要的虚函数：
+在这个程序中，我们从g2o派生出了用于曲线拟合的图优化顶点和边：CurveFittingVertex和CurveFittingEdge，这实质上扩展了g2o的使用方式。这两个类分别派生自BaseVertex和BaseUnaryEdge类。在派生类中，我们重写了重要的虚函数：
 
 \begin{enumerate}
 	\item 顶点的更新函数：oplusImpl。我们知道优化过程最重要的是增量$\Delta \bm{x}$的计算，而该函数处理的是$\bm{x}_{k+1} = \bm{x}_k + \Delta \bm{x}$的过程。
@@ -735,45 +795,47 @@ int main( int argc, char** argv )
 	\item 顶点的重置函数：setToOriginImpl。这是平凡的，我们把估计值置零即可。
 	
 	\item 边的误差计算函数：computeError。该函数需要取出边所连接的顶点的当前估计值，根据曲线模型，与它的观测值进行比较。这和最小二乘问题中的误差模型是一致的。
+    
+    \item 边的雅可比计算函数：linearizeOplus。这个函数里我们计算了每条边相对于顶点的雅可比。
 	
 	\item 存盘和读盘函数：read、write。由于我们并不想进行读/写操作，所以留空。
 \end{enumerate}
 
 定义了顶点和边之后，我们在main函数里声明了一个图模型，然后按照生成的噪声数据，往图模型中添加顶点和边，最后调用优化函数进行优化。g2o会给出优化的结果：
 
-\begin{lstlisting}
-% build/curve_fitting 
-generating data: 
-0 2.71828
-0.01 2.93161
-0.02 2.12942
-......
-iteration= 13 chi2= 101.937020 time= 4.06e-05    cumTime= 0.00048135  edges= 100 schur= 0 lambda= 3678.088107 levenbergIter= 6
-iteration= 14 chi2= 101.937020 time= 3.2215e-05  cumTime= 0.000513565 edges= 100 schur= 0 lambda= 19616.469906 levenbergIter= 3
-iteration= 15 chi2= 101.937020 time= 0.000108524 cumTime= 0.000622089 edges= 100 schur= 0 lambda= 836969.382664 levenbergIter= 4
-iteration= 16 chi2= 101.937020 time= 0.000159817 cumTime= 0.000781906 edges= 100 schur= 0 lambda= 224672257893341.656250 levenbergIter= 7
-solve time cost = 0.00173976 seconds. 
-estimated model: 0.890911   2.1719 0.943629
+\clearpage
+\begin{lstlisting}[language=sh,caption=终端输出：]
+start optimization
+iteration= 0	 chi2= 376785.128234	 time= 3.3299e-05	 cumTime= 3.3299e-05	 edges= 100	 schur= 0
+iteration= 1	 chi2= 35673.566018	 time= 1.3789e-05	 cumTime= 4.7088e-05	 edges= 100	 schur= 0
+iteration= 2	 chi2= 2195.012304	 time= 1.2323e-05	 cumTime= 5.9411e-05	 edges= 100	 schur= 0
+iteration= 3	 chi2= 174.853126	 time= 1.3302e-05	 cumTime= 7.2713e-05	 edges= 100	 schur= 0
+iteration= 4	 chi2= 102.779695	 time= 1.2424e-05	 cumTime= 8.5137e-05	 edges= 100	 schur= 0
+iteration= 5	 chi2= 101.937194	 time= 1.2523e-05	 cumTime= 9.766e-05	 edges= 100	 schur= 0
+iteration= 6	 chi2= 101.937020	 time= 1.2268e-05	 cumTime= 0.000109928	 edges= 100	 schur= 0
+iteration= 7	 chi2= 101.937020	 time= 1.2612e-05	 cumTime= 0.00012254	 edges= 100	 schur= 0
+iteration= 8	 chi2= 101.937020	 time= 1.2159e-05	 cumTime= 0.000134699	 edges= 100	 schur= 0
+iteration= 9	 chi2= 101.937020	 time= 1.2688e-05	 cumTime= 0.000147387	 edges= 100	 schur= 0
+solve time cost = 0.000919301 seconds. 
+estimated model: 0.890912   2.1719 0.943629
 \end{lstlisting}
 
-我们使用列文伯格—马夸尔特方法进行梯度下降，在迭代了16次后，最后优化结果与Ceres实验中相差无几。我们也在程序中提供了使用高斯牛顿法和DogLeg下降方式，请读者去掉它们前面的注释符号，自行对比各种梯度下降方法的差异。
+我们使用高斯—牛顿方法进行梯度下降，在迭代了9次后得到优化结果，与Ceres和手写高斯牛顿法相差无几。从运行速度来看，我们实验结论是手写快于g2o，而g2o快于Ceres。这是一个大体符合直觉的经验，通用性和高效性往往是互相矛盾的。但是本实验中Ceres使用了自动求导，且求解器配置与高斯牛顿还不完全一致，所以看起来慢一些。
 
-\clearpage
 \section{小结}
-本节介绍了SLAM中经常碰到的一种非线性优化问题：由许多个误差项平方和组成的最小二乘问题。我们介绍了它的定义和求解，并且讨论了两种主要的梯度下降方式：高斯牛顿法和列文伯格—马夸尔特方法。在实践部分中，分别使用了Ceres和g2o两种优化库求解同一个曲线拟合问题，发现它们给出了相似的结果。
+本节介绍了SLAM中经常碰到的一种非线性优化问题：由许多个误差项平方和组成的最小二乘问题。我们介绍了它的定义和求解，并且讨论了两种主要的梯度下降方式：高斯牛顿法和列文伯格—马夸尔特方法。在实践部分中，分别使用了手写高斯牛顿法、Ceres和g2o两种优化库求解同一个曲线拟合问题，发现它们给出了相似的结果。
 
-由于还没有详细谈Bundle Adjustment，所以实践部分选择了曲线拟合这样一个简单但有代表性的例子，以演示一般的非线性最小二乘求解方式。特别地，如果用g2o来拟合曲线，必须先把问题转换为图优化，定义新的顶点和边，这种做法是有一些迂回的——g2o的主要目的并不在此。相比之下，Ceres定义误差项求曲线拟合问题则自然了很多，因为它本身即是一个优化库。然而，在SLAM中更多的问题是，一个带有许多个相机位姿和许多个空间点的优化问题如何求解。特别地，当相机位姿以李代数表示时，误差项关于相机位姿的导数如何计算，将是一件值得详细讨论的事。我们将在后续内容发现，g2o提供了大量的顶点和边的类型，非常便于相机位姿估计问题。而在Ceres中，我们不得不自己实现每一个Cost Function，有一些不便。
+由于还没有详细谈Bundle Adjustment，所以我们在实践部分选择了曲线拟合这样一个简单但有代表性的例子，以演示一般的非线性最小二乘求解方式。特别地，如果用g2o来拟合曲线，必须先把问题转换为图优化，定义新的顶点和边，这种做法是有一些迂回的——g2o的主要目的并不在此。相比之下，Ceres定义误差项求曲线拟合问题则自然了很多，因为它本身即是一个优化库。然而，在SLAM中更多的问题是，一个带有许多个相机位姿和许多个空间点的优化问题如何求解。特别地，当相机位姿以李代数表示时，误差项关于相机位姿的导数如何计算，将是一件值得详细讨论的事。我们将在后续内容发现，g2o提供了大量现成的顶点和边，非常便于相机位姿估计问题。而在Ceres中，我们不得不自己实现每一个Cost Function，有一些不便。
 
 在实践部分的两个程序中，我们没有去计算曲线模型关于三个参数的导数，而是利用了优化库的数值求导，这使得理论和代码都会简洁一些。Ceres库提供了基于模板元的自动求导和运行时的数值求导，而g2o只提供了运行时数值求导这一种方式。但是，对于大多数问题，如果能够推导出雅可比矩阵的解析形式并告诉优化库，就可以避免数值求导中的诸多问题。
 
-最后，希望读者能够适应Ceres和g2o这些大量使用模板编程的方式。也许一开始会看上去比较吓人（特别是Ceres设置Problem和g2o初始化部分的代码），但是熟悉之后，就会觉得这样的方式是自然的，而且容易扩展。我们将在SLAM后端一讲中继续讨论稀疏性、核函数、位姿图（Pose Graph）等问题。
+最后，希望读者能够适应Ceres和g2o这些大量使用模板编程的方式。也许一开始会看上去比较吓人（特别是Ceres设置残差块的括号运算符，以及g2o初始化部分的代码），但是熟悉之后，就会觉得这样的方式是自然的，而且容易扩展。我们将在SLAM后端一讲中继续讨论稀疏性、核函数、位姿图（Pose Graph）等问题。
 
 \section*{习题}
 \begin{enumerate}
 	\item 证明线性方程$\bm{A} \bm{x} = \bm{b}$当系数矩阵$\bm{A}$超定时，最小二乘解为$\bm{x} = (\bm{A}^\mathrm{T}\bm{A})^{-1}\bm{A}^\mathrm{T} \bm{b}$。
 	\item 调研最速下降法、牛顿法、高斯牛顿法和列文伯格—马夸尔特方法各有什么优缺点。除了我们举的Ceres库和g2o库，还有哪些常用的优化库？（你可能会找到一些MATLAB上的库。）
 	\item 为什么高斯牛顿法的增量方程系数矩阵可能不正定？不正定有什么几何含义？为什么在这种情况下解就不稳定了？
-\clearpage
 	\item DogLeg是什么？它与高斯牛顿法和列文伯格—马夸尔特方法有何异同？请搜索相关的材料\footnote{\mbox{例如，}\url{http://www.numerical.rl.ac.uk/people/nimg/course/lectures/raphael/lectures/lec7slides.pdf}。}。
 	\item 阅读Ceres的教学材料（\url{http://ceres-solver.org/tutorial.html}）以更好地掌握其用法。
 	\item 阅读g2o自带的文档，你能看懂它吗？如果还不能完全看懂，请在第10讲和第11讲之后回来再看。
